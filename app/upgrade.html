@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Upgrade — Tenra</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #eaf3ff, #f8faff);
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 80px auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.05);
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .section-sub {
+      color: #555;
+      margin-bottom: 30px;
+    }
+    .plans {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .plan {
+      flex: 1 1 260px;
+      background: #f9fafc;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      border: 1px solid #e0e3e9;
+      transition: all 0.25s ease;
+    }
+    .plan:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .plan.highlight {
+      border: 2px solid #007aff;
+      background: #f5faff;
+    }
+    .price {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 10px 0;
+    }
+    .btn {
+      background: #007aff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.25s ease;
+    }
+    .btn:hover {
+      background: #005ccc;
+    }
+    input {
+      padding: 10px;
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Upgrade auf Firmenkonto</h1>
+    <p class="section-sub">Erstelle deinen eigenen Bereich für dein Unternehmen und lade dein Team ein.</p>
+
+    <label for="companyName"><strong>Firmenname</strong></label>
+    <input id="companyName" type="text" placeholder="z. B. Müller GmbH" required>
+
+    <div class="plans">
+  <div class="plan">
+    <h3>Starter</h3>
+    <p>Für kleine Teams bis 10 Mitarbeiter</p>
+    <div class="price">39 €/Monat</div>
+    <button class="btn" data-plan="starter" type="button">Auswählen</button>
+  </div>
+
+  <div class="plan highlight">
+    <h3>Team</h3>
+    <p>Für wachsende Firmen bis 40 Mitarbeiter</p>
+    <div class="price">79 €/Monat</div>
+    <button class="btn" data-plan="team" type="button">Auswählen</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="/js/supabaseClient.js" defer></script>
+<script src="/js/upgrade.js" defer></script>
+</body>
+</html>
+
+

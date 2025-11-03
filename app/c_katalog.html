@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Controlling-Katalog — Tenra</title>
+
+  <!-- ========== Supabase Script ========== -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
+
+    const listEl = document.createElement("div");
+    listEl.className = "module-list";
+    document.body.appendChild(listEl);
+
+    const statusEl = document.createElement("p");
+    statusEl.className = "status";
+    document.body.appendChild(statusEl);
+
+    // ✅ Controlling-spezifische Module
+    const defaults = [
+      { key: "kassenbuch", name: "Kassenbuch" },
+      { key: "Betriebskosten", name: "Betriebskosten" },
+      { key: "mitarbeiter_effizienz", name: "Mitarbeiter-Effizienz" },
+      { key: "export_dashboard", name: "Export & Berichte" },
+    ];
+
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        listEl.innerHTML = "❌ Kein Login erkannt. Bitte zuerst einloggen.";
+        return;
+      }
+
+      // 🔐 Rolle prüfen
+      const { data: roleData } = await supabase
+        .from("firmen_user")
+        .select("role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "accepted")
+        .maybeSingle();
+
+      if (!roleData || !["owner", "admin"].includes(roleData.role)) {
+        alert("⛔ Kein Zugriff – nur Admins und Owner dürfen diese Seite verwenden!");
+        listEl.innerHTML = "⛔ Kein Zugriff – nur Admins und Owner dürfen diese Seite sehen.";
+        return;
+      }
+
+      const user = session.user;
+      const token = session.access_token;
+
+      const { data: membership } = await supabase
+        .from("firmen_user")
+        .select("firma_id, role, status")
+        .eq("user_id", user.id)
+        .eq("status", "accepted")
+        .maybeSingle();
+
+      if (!membership) {
+        listEl.innerHTML = "❌ Keine Firma gefunden.";
+        return;
+      }
+
+      const firmaId = membership.firma_id;
+
+      // 🧩 Module aus neuer Tabelle laden
+      const { data: modules, error: modError } = await supabase
+        .from("controlling_module")
+        .select("*")
+        .eq("firma_id", firmaId);
+
+      if (modError) {
+        console.error("❌ Fehler beim Laden der Module:", modError);
+        listEl.innerHTML = "❌ Fehler beim Laden der Module.";
+        return;
+      }
+
+      // UI rendern
+      listEl.innerHTML = "";
+      defaults.forEach((mod) => {
+        const active = modules?.find((m) => m.modul_key === mod.key)?.aktiviert;
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <span>${mod.name}</span>
+          <div class="toggle ${active ? "active" : ""}" data-key="${mod.key}"></div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      // Toggle Handler
+      listEl.addEventListener("click", async (e) => {
+        const toggle = e.target.closest(".toggle");
+        if (!toggle) return;
+
+        const key = toggle.dataset.key;
+        const active = toggle.classList.toggle("active");
+        statusEl.textContent = `Speichere ${key}...`;
+
+        try {
+          const { error } = await supabase
+            .from("controlling_module")
+            .update({ aktiviert: active })
+            .eq("firma_id", firmaId)
+            .eq("modul_key", key);
+
+          if (error) throw error;
+          statusEl.textContent = `✅ ${key} ${active ? "aktiviert" : "deaktiviert"}`;
+        } catch (err) {
+          console.error("❌ Fehler:", err);
+          toggle.classList.toggle("active");
+          statusEl.textContent = `❌ Fehler beim Speichern von ${key}`;
+        }
+      });
+    }
+    init();
+  </script>
+
+  <!-- ========== Design ========== -->
+  <style>
+    :root {
+      --blue: #007aff;
+      --green: #23c483;
+      --bg: #f6f8fc;
+      --glass: rgba(255, 255, 255, 0.6);
+      --stroke: rgba(0, 0, 0, 0.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 60px 40px;
+      color: #1c1c1e;
+      background: linear-gradient(160deg, #e8f0ff 0%, #f8fbff 50%, #e9fff4 100%);
+      min-height: 100vh;
+    }
+
+    h1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 28px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: var(--glass);
+      backdrop-filter: blur(10px) saturate(180%);
+      border: 1px solid var(--stroke);
+      color: var(--blue);
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      margin-bottom: 30px;
+    }
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.8);
+      transform: translateY(-1px);
+    }
+
+    .module-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(12px) saturate(180%);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid var(--stroke);
+      box-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+      transition: 0.25s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 40px rgba(16, 24, 40, 0.12);
+    }
+
+    .toggle {
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: #e5e5ea;
+      position: relative;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      transition: 0.3s;
+    }
+    .toggle.active {
+      background: var(--green);
+    }
+    .toggle.active::after {
+      left: 23px;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 28px;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <a class="back-btn" href="/app/controlling.html">← Zurück</a>
+  <h1>🧩 Controlling-Module verwalten</h1>
+</body>
+</html>

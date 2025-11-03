@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beitritt zur Firma</title>
+
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #f5f6f7;
+      --glass: rgba(255, 255, 255, 0.6);
+      --accent: #007aff;
+      --text: #1c1c1e;
+      --shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #f6f7fb, #e9ebef);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      width: 380px;
+      max-width: 90%;
+      padding: 40px 30px;
+      text-align: center;
+      animation: fadeIn 0.6s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #111;
+    }
+
+    p {
+      color: #444;
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+    }
+
+    button:hover {
+      background: #0060df;
+      transform: translateY(-1px);
+    }
+
+    .loader {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 0.9s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .popup {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .popup.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .popup-content {
+      background: #fff;
+      border-radius: 18px;
+      padding: 30px;
+      text-align: center;
+      width: 320px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      animation: fadeIn 0.3s ease forwards;
+    }
+
+    .popup-content h2 {
+      margin: 0 0 10px;
+      font-weight: 600;
+      font-size: 20px;
+    }
+
+    .popup-content p {
+      margin: 0 0 20px;
+      font-size: 15px;
+      color: #444;
+    }
+
+    .popup-content button {
+      width: 100%;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Beitritt zur Firma</h1>
+    <p id="status">Bitte warten …</p>
+    <div class="loader" id="loader"></div>
+  </div>
+
+  <div class="popup" id="popup">
+    <div class="popup-content">
+      <h2 id="popup-title"></h2>
+      <p id="popup-message"></p>
+      <button id="popup-btn">OK</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+
+    const token = new URLSearchParams(window.location.search).get("token");
+    const statusEl = document.getElementById("status");
+    const loader = document.getElementById("loader");
+
+    const popup = document.getElementById("popup");
+    const popupTitle = document.getElementById("popup-title");
+    const popupMessage = document.getElementById("popup-message");
+    const popupBtn = document.getElementById("popup-btn");
+
+    function showPopup(title, message) {
+      popupTitle.textContent = title;
+      popupMessage.textContent = message;
+      popup.classList.add("active");
+      popupBtn.onclick = () => {
+        popup.classList.remove("active");
+        window.location.href = "/";
+      };
+    }
+
+    async function main() {
+      if (!token) {
+        showPopup("Ungültiger Link", "Es wurde kein Einladungstoken gefunden.");
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        loader.style.display = "none";
+        statusEl.innerHTML = `
+          <p>Bitte melde dich an, um der Firma beizutreten.</p>
+          <button id="login">Login / Registrieren</button>
+        `;
+        document.getElementById("login").onclick = async () => {
+          const email = prompt("Bitte gib deine E-Mail-Adresse ein:");
+          if (!email) return;
+
+          const { error } = await supabase.auth.signInWithOtp({ email });
+          if (error) showPopup("Fehler beim Login", error.message);
+          else showPopup("E-Mail gesendet", "Überprüfe dein Postfach für den Login-Link.");
+        };
+        return;
+      }
+
+      
+    }
+
+    main();
+    // 👇 Falls Session schon aktiv (nach Magic Link Redirect), sofort joinen
+const { data: { session } } = await supabase.auth.getSession();
+if (session) {
+  supabase.auth.emit("SIGNED_IN", session); // triggert obenstehenden Block
+}
+
+    // ✅ Warte auf Login-Status (z. B. nach Magic-Link)
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_IN" && session) {
+    const jwt = session.access_token;
+    console.log("✅ Session aktiv:", jwt ? "ja" : "nein");
+
+    const res = await fetch(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/join-user",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ token }),
+      }
+    );
+
+    loader.style.display = "none";
+
+    if (res.ok) {
+      showPopup("Erfolgreich beigetreten 🎉", "Du bist jetzt Mitglied der Firma!");
+    } else {
+      const msg = await res.text();
+      showPopup("Fehler beim Beitritt", msg || "Etwas ist schiefgelaufen.");
+    }
+  }
+});
+
+  </script>
+</body>
+</html>

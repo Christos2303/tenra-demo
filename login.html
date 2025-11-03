@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login — Tenra</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+<body class="auth-body">
+  <div class="auth-bg"></div>
+
+  <header class="auth-header">
+    <a href="index.html" class="brand back">
+      <span class="logo-dot"></span><span class="brand-text">Tenra</span>
+    </a>
+  </header>
+
+  <main class="auth-container glass">
+    <h1>Willkommen zurück<span class="dot-blink">.</span></h1>
+    <p class="subtext">Melde dich an und verwalte deinen persönlichen Bereich.</p>
+
+    <form class="auth-form" onsubmit="return false">
+      <label>E-Mail-Adresse
+        <input type="email" id="loginEmail" placeholder="name@email.de" required>
+      </label>
+      <label>Passwort
+        <input type="password" id="loginPass" placeholder="••••••••" required>
+      </label>
+
+      <div class="auth-remember">
+        <label><input type="checkbox"> Angemeldet bleiben</label>
+        <a href="#" class="link small">Passwort vergessen?</a>
+      </div>
+
+      <button class="btn wide" id="loginBtn" type="submit">Anmelden</button>
+
+      <div class="or-line"><span>oder</span></div>
+      <a href="register.html" class="ghost wide">Kostenlos starten</a>
+    </form>
+
+    <div class="auth-footer">
+      <p class="hint">Neu bei Tenra? <a href="register.html" class="link">Jetzt registrieren</a></p>
+      <p class="small muted">Deine Daten bleiben privat – Firmenbereich erst nach Upgrade.</p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabaseClient.js"></script>
+<!-- Seiten-spezifisches Script danach: -->
+<script src="/js/auth.js"></script>        <!-- auf login/register -->
+<script src="/js/dashboard.js"></script>   <!-- auf dashboard -->
+<script></script>
+</body>
+</html>

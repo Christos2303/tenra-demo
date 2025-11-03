@@ -1,0 +1,65 @@
+.auth-body{
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  min-height:100vh; background:var(--bg); color:var(--text);
+  overflow:hidden; position:relative;
+}
+
+/* Subtle animated background */
+.auth-bg{
+  position:fixed; inset:0; z-index:-1;
+  background:
+    radial-gradient(800px 400px at 80% 10%, rgba(10,132,255,.15), transparent 60%),
+    radial-gradient(1000px 500px at 0% 100%, rgba(111,81,255,.18), transparent 70%),
+    radial-gradient(600px 300px at 50% 50%, rgba(46,214,173,.1), transparent 60%);
+  animation:bgMove 18s ease-in-out infinite alternate;
+}
+@keyframes bgMove{
+  0%{transform:translate(0,0)}100%{transform:translate(-30px,-40px)}
+}
+
+.auth-container{
+  width:100%; max-width:420px; padding:40px 34px;
+  text-align:center; position:relative; z-index:2;
+}
+.auth-container h1{
+  font-size:32px; margin:0 0 8px; letter-spacing:-.3px;
+}
+.dot-blink{color:var(--brand); animation:blink 1.5s infinite}
+@keyframes blink{50%{opacity:.3}}
+.subtext{color:var(--muted); margin-bottom:22px}
+
+.auth-form{display:flex; flex-direction:column; gap:16px; text-align:left}
+.auth-form label{display:flex; flex-direction:column; font-weight:600; font-size:14px}
+.auth-form input{
+  padding:12px 14px; border-radius:12px; border:1px solid var(--stroke);
+  background:color-mix(in oklab, var(--panel) 70%, transparent); color:var(--text);
+}
+.auth-form input:focus{outline:2px solid color-mix(in oklab, var(--brand) 60%, transparent)}
+
+.auth-remember,.auth-agree{
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:13px; color:var(--muted);
+}
+.auth-agree a{font-size:13px}
+
+.wide{width:100%; justify-content:center}
+.or-line{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; margin:10px 0}
+.or-line::before,.or-line::after{content:""; flex:1; height:1px; background:var(--stroke)}
+
+.auth-footer{margin-top:24px}
+.auth-footer .hint{font-size:14px}
+.small{font-size:12px}
+.muted{color:var(--muted)}
+
+.auth-header{position:absolute; top:28px; left:28px}
+.brand.back{opacity:.8; text-decoration:none}
+.brand.back:hover{opacity:1}
+.logo-dot{animation:glow 3s infinite alternate}
+@keyframes glow{50%{box-shadow:0 0 10px var(--brand)}}
+
+/* Subtle card rise */
+.auth-container{animation:floatUp .8s cubic-bezier(.23,1,.32,1)}
+@keyframes floatUp{
+  0%{transform:translateY(20px); opacity:0}
+  100%{transform:translateY(0); opacity:1}
+}

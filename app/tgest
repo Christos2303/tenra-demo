@@ -1,0 +1,2633 @@
+hier mal mein ganzer code für schichtbuch,
+gibt es funktionen oder bugs fehler die du siehst oder verbesserungen? wenn ja machen wir es schritt für schritt schau dir mal andere schichtbücher an und sag hey das brauchst du unbedingt etc
+und dann noch eine ehrliche meinung über meine momentane
+
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CIRUS — Schichtbuch</title>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // 🔒 Garantiert gültige Session abrufen
+async function ensureSession() {
+  if (state.session && state.user) return true;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    state.session = session;
+    state.user = session.user;
+    return true;
+  }
+
+  // 🔁 Kurz warten & erneut versuchen
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 200));
+    const { data: { session: s2 } } = await supabase.auth.getSession();
+    if (s2) {
+      state.session = s2;
+      state.user = s2.user;
+      return true;
+    }
+  }
+
+  alert("❌ Keine aktive Sitzung — bitte neu einloggen!");
+  return false;
+}
+
+
+    // ===========================
+    // 🔧 SUPABASE CONFIG
+    // ===========================
+    const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";     // <<-- EINTRAGEN
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";                   // <<-- EINTRAGEN
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ===========================
+// 🍏 Custom Confirm-Dialog
+// ===========================
+function customConfirm(message) {
+  return new Promise(resolve => {
+    // Overlay
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+
+    // Dialog
+    const dialog = document.createElement("div");
+    dialog.className = "confirm-box";
+    dialog.innerHTML = `
+      <div class="confirm-text">${message}</div>
+      <div class="confirm-buttons">
+        <button class="btn-cancel">Abbrechen</button>
+        <button class="btn-ok">Löschen</button>
+      </div>
+    `;
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add("show"));
+
+    // Nur auf Klick schließen
+    dialog.querySelector(".btn-cancel").onclick = () => close(false);
+    dialog.querySelector(".btn-ok").onclick = () => close(true);
+
+    function close(result) {
+      overlay.classList.remove("show");
+      setTimeout(() => overlay.remove(), 200);
+      resolve(result);
+    }
+
+    // Optional: ESC = Abbrechen
+    document.addEventListener("keydown", function esc(e) {
+      if (e.key === "Escape") {
+        document.removeEventListener("keydown", esc);
+        close(false);
+      }
+    });
+  });
+}
+
+
+// ✅ Browser confirm() überschreiben
+window.confirm = msg => customConfirm(msg);
+
+// ===========================
+// 🍏 Apple-Style Toast-System
+// ===========================
+function showToast(message, type = "info") {
+  const toast = document.createElement("div");
+  toast.className = `apple-toast ${type}`;
+  toast.innerHTML = `<div class="toast-text">${message}</div>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 450);
+  }, 2600);
+}
+
+// 🔄 alert() überschreiben → automatisch Toast nutzen
+window.alert = function (msg) {
+  showToast(msg, "info");
+};
+
+async function saveFirmaSettings(ev) {
+  ev.preventDefault();
+  if (!(await ensureSession())) return;
+
+  const form = ev.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+
+  // 🔧 Alle Time-Felder bereinigen
+  for (const key in data) {
+    if (key.toLowerCase().includes("zeit") || key.toLowerCase().includes("start") || key.toLowerCase().includes("ende")) {
+      if (!data[key] || data[key].trim() === "") {
+        data[key] = null; // ⬅️ statt leerem String null setzen
+      }
+    }
+  }
+
+  data.firma_id = state.currentFirmaId;
+
+  console.log("💾 Speichere Einstellungen:", data);
+
+  const { error } = await supabase
+    .from("firmen_settings")
+    .upsert(data, { onConflict: "firma_id" });
+
+  if (error) {
+    console.error("⚠️ Fehler beim Speichern der Einstellungen:", error);
+    showToast("⚠️ Fehler beim Speichern!", "error");
+    return;
+  }
+
+  showToast("✅ Einstellungen gespeichert", "success");
+  await reloadStructure();
+}
+
+
+    // =========================================
+// ⚙️ Firmenweite Einstellungen laden
+// =========================================
+async function loadFirmaSettings() {
+  // 🔒 Sicherheitsprüfung
+  if (!state.currentFirmaId || typeof state.currentFirmaId !== "string") {
+    console.error("❌ Keine gültige Firma gewählt:", state.currentFirmaId);
+    return;
+  }
+
+  console.log("🔹 Lade Einstellungen für Firma:", state.currentFirmaId);
+
+  try {
+    // ✅ Daten holen
+    const { data, error } = await supabase
+      .from("firmen_settings")
+      .select("*")
+      .eq("firma_id", state.currentFirmaId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("❌ Fehler beim Laden der Einstellungen:", error);
+      return;
+    }
+
+    // Falls noch keine Settings existieren → neu anlegen
+    if (!data) {
+      console.warn("⚠️ Keine Einstellungen vorhanden – erstelle neuen Eintrag …");
+      const { error: insertErr } = await supabase
+        .from("firmen_settings")
+        .insert({ firma_id: state.currentFirmaId });
+
+      if (insertErr) {
+        console.error("❌ Fehler beim Erstellen des Settings-Eintrags:", insertErr);
+        return;
+      }
+
+      // danach direkt neu laden
+      return loadFirmaSettings();
+    }
+
+    // ✅ Erfolg: state + Formular füllen
+    state.settings = data;
+    const f = document.getElementById("formFirmaSettings");
+
+// 🔧 Alle Felder ausfüllen (inkl. Zeitfelder)
+for (const [key, value] of Object.entries(data)) {
+  const input = f.querySelector(`[name="${key}"]`);
+  if (!input) continue;
+
+  if (input.type === "checkbox") {
+    input.checked = !!value;
+  } 
+  else if (input.type === "time") {
+    if (value) {
+      // ✅ immer HH:MM extrahieren, egal ob 06:00:00 oder 06:00:00+00
+      const time = value.toString().slice(0,5);
+      input.value = time;
+    } else {
+      input.value = "";
+    }
+  } 
+  else {
+    input.value = value ?? "";
+  }
+}
+
+
+// Falls Zeitzone fehlt → Standard setzen
+if (!data.timezone) {
+  f.timezone.value = "Europe/Berlin";
+}
+
+
+    console.log("✅ Firmen-Einstellungen erfolgreich geladen");
+  } catch (err) {
+    console.error("❌ Unerwarteter Fehler in loadFirmaSettings:", err);
+  }
+}
+
+    // ===========================
+    // 🎛️ UI REFS
+    // ===========================
+    const els = {
+      sidebar: null,
+      main: null,
+      btnSchichtbuch: null,
+      btnAnalyse: null,
+      btnSettings: null,
+      btnBack: null,
+
+      // Header Selects
+      firmaSelect: null,
+      abtSelect: null,
+      linieSelect: null,
+      dateInput: null,
+
+      // Panels
+      panelSchichtbuch: null,
+      panelAnalyse: null,
+      panelSettings: null,
+
+      // Timeline
+      timeline: null,
+
+      // Modals
+      modalEntry: null,
+      entryForm: null,
+
+      // Settings forms/lists
+      listAbt: null,
+      formAbt: null,
+      listLinien: null,
+      formLinie: null,
+      listSchichten: null,
+      formSchicht: null,
+      listGruende: null,
+      formGrund: null,
+
+      // Analyse
+      anaRange: null,
+      anaCards: null,
+
+      // Suche
+      searchInput: null,
+      searchList: null,
+    };
+
+    // ===========================
+    // 🧠 STATE
+    // ===========================
+    const state = {
+      session: null,
+      user: null,
+      roleForFirma: null,   // 'member' | 'admin' | 'owner'
+      firmen: [],
+      currentFirmaId: null,
+      abteilungen: [],
+      linien: [],
+      schichten: [],
+      gruende: [],
+      selectedAbtId: null,   // optional
+      selectedLinieId: null,
+      selectedDate: new Date(), // Tagesanzeige
+      entries: [],
+    };
+
+      // ===============================================
+// 🔁 Linien-Dropdown automatisch aktualisieren
+// ===============================================
+function updateLinienAbtDropdown() {
+  const sel = document.querySelector("#formLinie select[name='linie_abt']");
+  if (!sel) return;
+  sel.innerHTML =
+    '<option value="">(keine Abteilung)</option>' +
+    state.abteilungen.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+}
+
+    // ===========================
+    // 🧰 HELPERS
+    // ===========================
+    const fmt = {
+      time(t) {
+        return String(t).padStart(2, "0") + ":00";
+      },
+      isoDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      },
+      toHalfHourFromClick(yOffset, scrollTop) {
+  // 1 Pixel = 1 Minute, Grid beginnt bei FS Start
+  const s = state.settings || {};
+  const [fsH, fsM] = (s.fs_start || "06:00").split(":").map(Number);
+  const gridStartMin = fsH * 60 + fsM;
+
+  const totalMin = Math.max(0, Math.round(yOffset + scrollTop));
+  const absoluteMin = gridStartMin + totalMin;
+
+  const snapped = Math.round(absoluteMin / 30) * 30;
+  const h = Math.floor(snapped / 60) % 24;
+  const m = snapped % 60;
+  return { h, m };
+},
+
+      toTz(d, h, m) {
+  const tz = state.settings?.timezone || "Europe/Berlin";
+  const nd = new Date(d);
+  nd.setHours(h, m, 0, 0);
+
+  // Lokale Zeit in gewählte Zeitzone umrechnen
+  const zoned = new Date(
+    nd.toLocaleString("en-US", { timeZone: tz })
+  );
+
+  // ISO ohne Zeitzonenversatz für datetime-local
+  const y = zoned.getFullYear();
+  const mo = String(zoned.getMonth() + 1).padStart(2, "0");
+  const da = String(zoned.getDate()).padStart(2, "0");
+  const ho = String(zoned.getHours()).padStart(2, "0");
+  const mi = String(zoned.getMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${da}T${ho}:${mi}`;
+},
+
+
+
+    };
+// Supabase Session check (mit Auto-Warten)
+async function waitForSession() {
+  // 1️⃣ Sofort versuchen
+  let { data: { session } } = await supabase.auth.getSession();
+
+  if (session) return session;
+
+  // 2️⃣ Falls noch nicht da → kurz warten & nochmals prüfen
+  for (let i = 0; i < 10; i++) {
+    await new Promise(r => setTimeout(r, 200));
+    const { data: { session: s2 } } = await supabase.auth.getSession();
+
+    if (s2) return s2;
+  }
+  return null;
+}
+
+    function showPanel(which) {
+      els.panelSchichtbuch.style.display = which === "sb" ? "flex" : "none";
+      els.panelAnalyse.style.display = which === "ana" ? "block" : "none";
+      els.panelSettings.style.display = which === "set" ? "block" : "none";
+    }
+
+    function setAdminVisibility() {
+        console.log("DEBUG: roleForFirma =", state.roleForFirma);
+console.log("DEBUG: btnSettings Element =", els.btnSettings);
+
+  // Sicherstellen, dass das Element existiert
+  if (!els.btnSettings) return;
+
+  // Inline-Stil entfernen (wichtig!)
+  els.btnSettings.removeAttribute("style");
+
+  // Adminstatus prüfen
+  const isAdmin = state.roleForFirma === "admin" || state.roleForFirma === "owner";
+
+  // Sichtbarkeit setzen
+  els.btnSettings.style.display = isAdmin ? "inline-flex" : "none";
+
+  // Admin-only Elemente (Panelbereiche)
+  document.querySelectorAll("[data-admin-only]").forEach(n => {
+    n.style.display = isAdmin ? "" : "none";
+  });
+
+  // Debug (optional)
+  console.log("👑 Admin visible?", isAdmin, "Role:", state.roleForFirma);
+}
+
+
+    function h(tag, attrs = {}, ...children) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "class") el.className = v;
+        else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v);
+      }
+      for (const c of children) {
+        el.appendChild(c instanceof Node ? c : document.createTextNode(c));
+      }
+      return el;
+    }
+
+    // ===========================
+    // 🔐 AUTH + LOAD
+    // ===========================
+    async function init() {
+        
+        
+  // Basic refs
+  Object.assign(els, {
+    sidebar: document.querySelector(".sidebar"),
+    main: document.querySelector(".main"),
+    btnSchichtbuch: document.querySelector("[data-nav='sb']"),
+    btnAnalyse: document.querySelector("[data-nav='ana']"),
+    btnSettings: document.querySelector("[data-nav='set']"),
+    btnBack: document.querySelector("[data-nav='back']"),
+    panelSchichtbuch: document.getElementById("panelSchichtbuch"),
+    panelAnalyse: document.getElementById("panelAnalyse"),
+    panelSettings: document.getElementById("panelSettings"),
+    timeline: document.getElementById("timeline"),
+    firmaSelect: document.getElementById("firmaSelect"),
+    abtSelect: document.getElementById("abtSelect"),
+    linieSelect: document.getElementById("linieSelect"),
+    dateInput: document.getElementById("dateInput"),
+    modalEntry: document.getElementById("modalEntry"),
+    entryForm: document.getElementById("entryForm"),
+    listAbt: document.getElementById("listAbt"),
+    formAbt: document.getElementById("formAbt"),
+    listLinien: document.getElementById("listLinien"),
+    formLinie: document.getElementById("formLinie"),
+    listSchichten: document.getElementById("listSchichten"),
+    formSchicht: document.getElementById("formSchicht"),
+    listGruende: document.getElementById("listGruende"),
+    formGrund: document.getElementById("formGrund"),
+    anaRange: document.getElementById("anaRange"),
+    anaCards: document.getElementById("anaCards"),
+    searchInput: document.getElementById("searchInput"),
+    searchList: document.getElementById("searchList"),
+  });
+
+  // Navigation
+  els.btnSchichtbuch.addEventListener("click", () => showPanel("sb"));
+  els.btnAnalyse.addEventListener("click", () => showPanel("ana"));
+  els.btnSettings.addEventListener("click", () => showPanel("set"));
+  els.btnBack.addEventListener("click", () => history.back());
+
+  // Date picker
+  els.dateInput.value = fmt.isoDate(state.selectedDate);
+  els.dateInput.addEventListener("change", () => {
+    state.selectedDate = new Date(els.dateInput.value + "T00:00:00");
+    loadEntries();
+  });
+
+  // 1️⃣ Versuch: sofortige Session prüfen
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session && session.user) {
+    state.session = session;
+    state.user = session.user;
+    startApp();
+    console.table(state.firmen);
+
+  }
+
+  // 2️⃣ Fallback: auf spätere Auth-Änderung warten
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session && session.user) {
+      state.session = session;
+      state.user = session.user;
+      startApp();
+    }
+  });
+}
+
+
+// ------------------------------------------
+// Wird aufgerufen, sobald der User sicher eingeloggt ist
+// ------------------------------------------
+async function startApp() {
+  console.log("✅ Angemeldet als:", state.user.email);
+
+  // Firmen des Users laden
+  const { data: fuser, error: e1 } = await supabase
+    .from("firmen_user")
+    .select("firma_id, role, status, firmen ( id, name )")
+    .eq("user_id", state.user.id)
+    .eq("status", "accepted");
+
+  if (e1) {
+    console.error(e1);
+    alert("Konnte Firmenzuordnung nicht laden.");
+    return;
+  }
+
+  state.firmen = (fuser ?? []).map(r => ({
+    id: r.firmen.id,
+    name: r.firmen.name,
+    role: r.role
+  }));
+
+  if (!state.firmen.length) {
+    alert("Keine freigeschaltete Firma gefunden.");
+    return;
+  }
+
+  // Firma auswählen (erste als default)
+  els.firmaSelect.innerHTML = state.firmen
+    .map(f => `<option value="${f.id}">${f.name}</option>`)
+    .join("");
+
+  state.currentFirmaId = state.firmen[0].id;
+  state.roleForFirma = state.firmen[0].role;
+  setAdminVisibility();
+  console.log("✅ Firma gesetzt:", state.currentFirmaId, "(", state.firmen[0].name, ")");
+
+
+  els.firmaSelect.addEventListener("change", () => {
+    state.currentFirmaId = els.firmaSelect.value;
+    const item = state.firmen.find(f => f.id === state.currentFirmaId);
+    state.roleForFirma = item?.role ?? "member";
+    setAdminVisibility();
+    reloadStructure();
+  });
+
+  // Struktur + Timeline laden
+// Erst Firma laden
+if (!state.currentFirmaId) {
+  console.error("❌ Keine gültige Firma gefunden in startApp");
+  return;
+}
+
+// Jetzt erst strukturabhängige Funktionen
+await reloadStructure();
+await loadFirmaSettings();   // <-- zuerst laden
+await buildTimelineGrid();   // <-- jetzt mit echten Schichtzeiten
+await loadEntries();
+checkSelectionLock(); // 🔒 Sofort prüfen beim Start
+
+
+
+
+  // Suche
+  els.searchInput.addEventListener("input", debounce(searchEntries, 300));
+
+  // Timeline: Doppelklick → Eintrag hinzufügen
+  els.timeline.addEventListener("dblclick", openEntryModalFromClick);
+
+  // Form-Handler
+  els.entryForm.addEventListener("submit", saveEntry);
+  els.formAbt.addEventListener("submit", saveAbteilung);
+  els.formLinie.addEventListener("submit", saveLinie);
+  els.formSchicht.addEventListener("submit", saveSchicht);
+  els.formGrund.addEventListener("submit", saveGrund);
+  els.formSettings = document.getElementById("formSettings");
+els.formSettings.addEventListener("submit", saveFirmaSettings);
+document.getElementById("btnBackupNow").onclick = () => createBackup(true);
+document.getElementById("btnRestore").onclick = restoreBackup;
+
+
+  // Analyse
+  els.anaRange.addEventListener("change", loadAnalyse);
+  await loadAnalyse();
+  console.log("🎯 ROLE:", state.roleForFirma);
+console.log("🎯 Button Element:", els.btnSettings);
+console.log("🎯 Admin check:", state.roleForFirma === "admin" || state.roleForFirma === "owner");
+
+  setTimeout(setAdminVisibility, 300);
+
+}
+
+
+    async function reloadStructure() {
+      const { data: abt } = await supabase
+        .from("abteilungen").select("*").eq("firma_id", state.currentFirmaId).order("name");
+      state.abteilungen = abt ?? [];
+
+      const { data: lin } = await supabase
+        .from("linien").select("*").eq("firma_id", state.currentFirmaId).order("name");
+      state.linien = lin ?? [];
+
+      const { data: sch } = await supabase
+        .from("schichten").select("*").eq("firma_id", state.currentFirmaId).order("start");
+      state.schichten = sch ?? [];
+
+      const { data: gr } = await supabase
+        .from("stillstandsgruende").select("*").eq("firma_id", state.currentFirmaId).order("name");
+      state.gruende = gr ?? [];
+
+      // Abteilung optional
+      els.abtSelect.innerHTML = `<option value="">(keine Abteilung)</option>` +
+        state.abteilungen.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+      els.abtSelect.onchange = async () => {
+  state.selectedAbtId = els.abtSelect.value || null;
+
+  // Wenn keine Abteilung gewählt ist
+  if (!state.selectedAbtId) {
+    state.selectedLinieId = null;
+    fillLinienSelect();
+    checkSelectionLock();
+    return;
+  }
+
+  // 🧩 Elegante Aktualisierung ohne "Flackern"
+  showToast("🔄 Abteilung gewechselt – Ansicht wird aktualisiert ...", "info");
+
+  // Linien passend filtern, Timeline nicht sofort löschen
+  fillLinienSelect();
+  checkSelectionLock();
+
+  // Warte minimal, damit der DOM stabil bleibt
+  await new Promise(r => setTimeout(r, 400));
+
+  // Struktur & Daten nachladen
+  await reloadStructure();
+  // Nach dem Neuladen wieder die aktuelle Auswahl setzen
+els.abtSelect.value = state.selectedAbtId;
+
+  await loadFirmaSettings();
+  await buildTimelineGrid();
+  await loadEntries();
+  await loadAnalyse();
+
+  showToast("✅ Ansicht aktualisiert", "success");
+};
+
+
+
+
+els.linieSelect.onchange = () => {
+  state.selectedLinieId = els.linieSelect.value || null;
+  checkSelectionLock();
+};
+
+
+      fillLinienSelect();
+      // 🩵 Nach dem Neuladen Dropdowns wieder korrekt setzen
+if (state.selectedAbtId) {
+  els.abtSelect.value = state.selectedAbtId;
+}
+if (state.selectedLinieId) {
+  els.linieSelect.value = state.selectedLinieId;
+}
+
+      paintSettingsLists();
+      updateLinienAbtDropdown();
+      checkSelectionLock(); // 🔒 Sicherstellen, dass direkt nach Laden gesperrt ist
+
+
+    }
+
+    function fillLinienSelect() {
+  // Wenn keine Abteilung gewählt ist → Linien deaktivieren & leeren
+  if (!state.selectedAbtId) {
+    els.linieSelect.innerHTML = '<option value="">(keine Abteilung gewählt)</option>';
+    els.linieSelect.disabled = true;
+    state.selectedLinieId = null;
+    checkSelectionLock();
+    return;
+  }
+
+  // 🔹 Linien für gewählte Abteilung filtern
+  const filtered = state.linien.filter(l => l.abteilung_id === state.selectedAbtId);
+  els.linieSelect.innerHTML = filtered.map(l => `<option value="${l.id}">${l.name}</option>`).join("");
+
+  // 🔹 Wenn keine Linien gefunden → Select deaktivieren
+  if (!filtered.length) {
+    els.linieSelect.disabled = true;
+    els.linieSelect.innerHTML = '<option value="">(keine Linien vorhanden)</option>';
+    state.selectedLinieId = null;
+  } else {
+    els.linieSelect.disabled = false;
+    state.selectedLinieId = filtered[0].id;
+  }
+
+  // 🔄 Event neu setzen
+  els.linieSelect.onchange = async () => {
+    state.selectedLinieId = els.linieSelect.value || null;
+    await loadEntries();
+    await loadAnalyse();
+    checkSelectionLock();
+  };
+
+  checkSelectionLock();
+}
+
+
+
+function checkSelectionLock() {
+  const abtSelected = !!state.selectedAbtId;
+  const linieSelected = !!state.selectedLinieId;
+
+  const inputs = document.querySelectorAll(
+    "#panelSchichtbuch input, #panelSchichtbuch select, #panelSchichtbuch textarea, #panelSchichtbuch button"
+  );
+
+  if (!abtSelected || !linieSelected) {
+    // 🧱 alles deaktivieren, außer den Auswahlmenüs selbst
+    inputs.forEach(el => {
+      if (el.id === "abtSelect" || el.id === "linieSelect") return;
+      el.disabled = true;
+      el.classList.add("disabled-lock");
+    });
+    showHint("Bitte zuerst Abteilung und Linie auswählen.");
+  } else {
+    // ✅ wieder aktivieren
+    inputs.forEach(el => {
+      el.disabled = false;
+      el.classList.remove("disabled-lock");
+    });
+    hideHint();
+  }
+}
+
+
+function isAbteilungAvailable() {
+  return state.abteilungen && state.abteilungen.length > 0;
+}
+
+    async function buildTimelineGrid() {
+  els.timeline.innerHTML = "";
+  els.timeline.style.position = "relative";
+
+  // Hole aktuelle Schichtzeiten (aus Firmen-Settings)
+  const s = state.settings || {};
+
+  // Fallbacks, falls keine Zeiten gespeichert
+  const fsStart = s.fs_start || "06:00";
+  const fsEnd   = s.fs_ende  || "14:30";
+  const ssStart = s.ss_start || "14:30";
+  const ssEnd   = s.ss_ende  || "23:00";
+  const nsStart = s.ns_start || "23:00";
+  const nsEnd   = s.ns_ende  || "06:00";
+
+  // Beginn (FS Start) & Ende (NS Ende)
+  const [fsH, fsM] = fsStart.split(":").map(Number);
+  const [nsH, nsM] = nsEnd.split(":").map(Number);
+  let start = fsH + fsM / 60;
+  let end = nsH + nsM / 60;
+if (end <= start) end += 24; // über Mitternacht
+end += 1; // Sicherheitspuffer, damit letzte Zeile (z. B. 05:30–06:00) sichtbar ist
+
+
+  const totalMin = (end - start) * 60;
+  console.log(`🧭 Grid range: ${fsStart} → ${nsEnd} = ${totalMin}px`);
+
+  // 30-Minuten-Raster
+  for (let t = start; t < end; t += 0.5) {
+    const h = Math.floor(t) % 24;
+    const m = t % 1 === 0 ? "00" : "30";
+    const row = document.createElement("div");
+    row.className = "half-hour-row";
+    row.innerHTML = `
+      <div class="hour-label">${String(h).padStart(2, "0")}:${m}</div>
+      <div class="hour-grid"></div>
+    `;
+    els.timeline.appendChild(row);
+  }
+
+  // Sichtbare Höhe
+  // 🧭 Höhe fixen – Timeline bis NS-Ende scrollbar machen
+const totalHeight = totalMin + 200; // +200 = kleiner Sicherheitspuffer
+els.timeline.style.height = totalHeight + "px";
+els.timeline.style.minHeight = totalHeight + "px";
+
+
+
+
+  // Schicht-Markierungen + aktuelle Zeit
+  addShiftMarkers({ fs_start: fsStart, fs_ende: fsEnd, ss_start: ssStart, ss_ende: ssEnd, ns_start: nsStart, ns_ende: nsEnd });
+  startTimeLine();
+await addShiftLines();
+enableHalfRowHover();
+
+
+
+
+  // 🎢 Sanft zum aktuellen Zeitpunkt scrollen
+const now = new Date();
+const minutes = now.getHours() * 60 + now.getMinutes();
+els.timeline.scrollTo({
+  top: Math.max(0, minutes - 300),
+  behavior: "smooth"
+});
+
+}
+
+
+// 🧭 Nachträglicher Fix fürs Grid & Autoscroll
+function fixTimelineLayout() {
+  const timeline = document.getElementById("timeline");
+  if (!timeline) return;
+
+  // Höhe des Timelines-Containers sicherstellen
+  const rows = timeline.querySelectorAll(".half-hour-row");
+  if (!rows.length) {
+    console.warn("⚠️ Keine Timeline-Rows gefunden – Grid wird neu gebaut");
+    buildTimelineGrid();
+    return;
+  }
+
+  const totalHeight = rows.length * 30; // 30px je halbe Stunde
+  timeline.style.height = totalHeight + "px";
+  timeline.style.minHeight = totalHeight + "px";
+
+  // Scroll automatisch zur aktuellen Zeit
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  timeline.scrollTop = Math.max(0, minutes - 300); // leicht oberhalb
+}
+
+// Nach dem Laden/Zeichnen der Einträge aufrufen
+setTimeout(fixTimelineLayout, 800);
+
+
+// 🌈 Markierungen für Schichtbeginn & -ende
+function addShiftMarkers(s) {
+  const markers = [
+    { label: "FS", start: s.fs_start, end: s.fs_ende, color: "#007aff" },
+    { label: "SS", start: s.ss_start, end: s.ss_ende, color: "#facc15" },
+    { label: "NS", start: s.ns_start, end: s.ns_ende, color: "#22c55e" },
+  ];
+
+  const [fsH, fsM] = (s.fs_start || "06:00").split(":").map(Number);
+  const gridStartMin = fsH * 60 + fsM; // Startzeit des Grids in Minuten
+
+  markers.forEach(m => {
+    if (!m.start || !m.end) return;
+    const [sh, sm] = m.start.split(":").map(Number);
+    const [eh, em] = m.end.split(":").map(Number);
+
+    const startMin = sh * 60 + sm - gridStartMin;
+    let endMin = eh * 60 + em - gridStartMin;
+    if (endMin <= startMin) endMin += 1440; // über Mitternacht
+
+    const stripe = document.createElement("div");
+    stripe.className = "shift-marker";
+    stripe.style.top = `${startMin}px`;
+    stripe.style.height = `${endMin - startMin}px`;
+    stripe.style.borderLeft = `6px solid ${m.color}`;
+    stripe.title = `${m.label} ${m.start}–${m.end}`;
+    els.timeline.appendChild(stripe);
+  });
+}
+async function addShiftLines() {
+  // ❌ alte Linien entfernen
+  els.timeline.querySelectorAll(".shift-line").forEach(n => n.remove());
+
+  // 🧠 Nur für Admin/Owner sichtbar
+  if (state.roleForFirma !== "admin" && state.roleForFirma !== "owner") return;
+
+  const schichten = state.schichten || [];
+  if (!schichten.length) return;
+
+  // Grid beginnt bei FS-Start (aus Settings)
+  const [fsH, fsM] = (state.settings?.fs_start || "06:00").split(":").map(Number);
+  const gridStartMin = fsH * 60 + fsM;
+
+  // Für jede Schicht das Ende berechnen
+  schichten.forEach(sch => {
+    if (!sch.ende) return;
+
+    const [eh, em] = sch.ende.split(":").map(Number);
+    let endMin = eh * 60 + em - gridStartMin;
+    if (endMin < 0) endMin += 1440; // über Mitternacht
+
+    const line = document.createElement("div");
+    line.className = "shift-line";
+    line.style.top = `${endMin}px`;
+
+    // 🏷️ Beschriftung
+    const label = document.createElement("div");
+    label.className = "shift-label";
+    label.textContent = `${sch.name} Ende ${sch.ende}`;
+    line.appendChild(label);
+
+    els.timeline.appendChild(line);
+  });
+}
+
+
+
+// ⏱️ Laufende aktuelle Zeitlinie
+// ⏱️ Laufende aktuelle Zeitlinie (Fix)
+function startTimeLine() {
+  let line = document.querySelector(".now-line");
+  if (!line) {
+    line = document.createElement("div");
+    line.className = "now-line";
+    els.timeline.appendChild(line);
+  }
+
+  function updateLine() {
+    const s = state.settings || {};
+    const [fsH, fsM] = (s.fs_start || "06:00").split(":").map(Number);
+    const [nsH, nsM] = (s.ns_ende || "06:00").split(":").map(Number);
+    const gridStartMin = fsH * 60 + fsM;
+    let gridEndMin = nsH * 60 + nsM;
+    if (gridEndMin <= gridStartMin) gridEndMin += 1440; // über Mitternacht
+
+    // aktuelle Minuten seit Tagesbeginn
+    const now = new Date();
+    const minOfDay = now.getHours() * 60 + now.getMinutes();
+    let pos = minOfDay - gridStartMin;
+
+    // 🔒 Begrenzung auf sichtbaren Gridbereich
+    if (pos < 0) pos = 0;
+    if (pos > gridEndMin - gridStartMin) {
+      line.style.display = "none";
+      return;
+    } else {
+      line.style.display = "block";
+    }
+
+    line.style.top = `${pos}px`;
+  }
+
+  updateLine();
+  clearInterval(window._timeLineInterval);
+  window._timeLineInterval = setInterval(updateLine, 60 * 1000);
+}
+
+
+
+
+    function fmtLocalSql(d) {
+  // erzeugt "YYYY-MM-DD HH:MM:SS" in lokaler Zeit
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ` +
+         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+async function loadEntries() {
+  if (!state.selectedAbtId || !state.selectedLinieId) {
+  console.warn("🚫 Keine Abteilung oder Linie gewählt – keine Einträge geladen.");
+  return;
+}
+
+  if (!state.selectedLinieId) { /* ... */ return; }
+
+  const start = new Date(state.selectedDate); start.setHours(0,0,0,0);
+  const end   = new Date(state.selectedDate); end.setHours(23,59,59,999);
+
+  const { data, error } = await supabase
+    .from("schichtbuch_eintraege")
+    .select("*, stillstandsgruende ( name )")
+    .eq("firma_id", state.currentFirmaId)
+    .eq("linie_id", state.selectedLinieId)
+    .gte("startzeit", fmtLocalSql(start))  // ← lokale Grenzen, kein Z
+    .lte("startzeit", fmtLocalSql(end))    // ←
+    .order("startzeit");
+
+      if (error) { console.error(error); return; }
+      state.entries = data ?? [];
+      paintEntries();
+    }
+
+    function paintEntries() {
+      
+  // Alte Einträge entfernen
+document.querySelectorAll(".entry, .entry-card").forEach(e => e.remove());
+
+
+  if (!state.entries || !state.entries.length) {
+    console.log("ℹ️ Keine Einträge zum Darstellen.");
+    return;
+  }
+
+  const dayStart = new Date(state.selectedDate);
+  dayStart.setHours(0, 0, 0, 0);
+
+
+ for (const e of state.entries) {
+  const [fsH, fsM] = (state.settings?.fs_start || "06:00").split(":").map(Number);
+  const gridStartMin = fsH * 60 + fsM;
+
+  // DB liefert "YYYY-MM-DDTHH:MM" oder "YYYY-MM-DD HH:MM:SS"
+  // → sicher zu einem Date machen (Browser-Lokalzeit)
+  const startStr = e.startzeit.replace(" ", "T");
+  const endStr   = e.endzeit ? e.endzeit.replace(" ", "T") : null;
+
+  const s  = new Date(startStr);
+  const en = endStr ? new Date(endStr) : new Date(s.getTime() + 30*60000);
+
+  const sMinOfDay  = s.getHours()*60 + s.getMinutes();
+  let   enMinOfDay = en.getHours()*60 + en.getMinutes();
+  if (en < s) enMinOfDay += 1440;
+
+  const top    = Math.max(0, sMinOfDay - gridStartMin);
+  const height = Math.max(12, enMinOfDay - sMinOfDay);
+
+
+
+// Dauer berechnen
+const durationMin = Math.max(1, Math.round((en - s) / 60000));
+
+// 🌈 Neues Apple-like Entry-Design
+const node = h("div",
+  { class: "entry-card", style: `top:${top}px;height:${height}px;`, "data-id": e.id },
+  h("div", { class: "entry-bar" },
+    h("div", { class: "entry-mini" },
+      h("span", { class: "entry-station" }, e.station || "—"),
+      h("span", { class: "entry-duration" }, `${durationMin} min`)
+    )
+  ),
+  h("div", { class: "entry-hoverbox" },
+    h("div", { class: "entry-title" }, e.stillstandsgruende?.name || "Kein Grund"),
+    h("div", { class: "entry-desc" },
+      e.beschreibung
+        ? e.beschreibung.slice(0, 120) + (e.beschreibung.length > 120 ? "…" : "")
+        : "Keine Beschreibung"
+    )
+  )
+);
+
+
+
+
+  node.addEventListener("click", () => editEntry(e));
+  els.timeline.appendChild(node);
+}
+
+
+
+}
+
+
+    function openEntryModalFromClick(ev) {
+  // 🚫 Blockieren, wenn keine Abteilung existiert oder gewählt ist
+  if (!state.abteilungen.length) {
+    showToast("⚠️ Keine Abteilung vorhanden – bitte zuerst eine anlegen!", "error");
+    return;
+  }
+
+  if (!state.selectedAbtId) {
+    showToast("⚠️ Keine Abteilung ausgewählt!", "error");
+    return;
+  }
+
+  if (!state.selectedLinieId) {
+    showToast("⚠️ Keine Linie ausgewählt!", "error");
+    return;
+  }
+
+  // 👇 Ab hier nur noch, wenn alles korrekt gesetzt ist
+  const rect = els.timeline.getBoundingClientRect();
+  const y = ev.clientY - rect.top;
+  const { h: hour, m: minute } = fmt.toHalfHourFromClick(y, els.timeline.scrollTop);
+
+      // 🚫 Begrenzung: Kein Eintrag außerhalb der Schichtzeiten
+const s = state.settings || {};
+const [fsH, fsM] = (s.fs_start || "06:00").split(":").map(Number);
+const [nsH, nsM] = (s.ns_ende || "06:00").split(":").map(Number);
+let startMin = fsH * 60 + fsM;
+let endMin = nsH * 60 + nsM;
+if (endMin <= startMin) endMin += 1440; // Nacht über Mitternacht
+const clickMin = hour * 60 + minute;
+const within = clickMin >= startMin && clickMin <= endMin;
+
+if (!within) {
+  alert("❌ Dieser Bereich liegt außerhalb der Schichtzeiten.");
+  return;
+}
+
+      const fromISO = fmt.toTz(state.selectedDate, hour, minute);
+      const toISO = fmt.toTz(state.selectedDate, Math.min(23, hour + (minute === 30 ? 1 : 0)), minute === 30 ? 0 : 30);
+
+      // Fill form
+      els.entryForm.reset();
+      els.entryForm.dataset.mode = "create";
+      els.entryForm.dataset.id = "";
+      document.getElementById("ef_grund").innerHTML = state.gruende.map(g => `<option value="${g.id}">${g.name}</option>`).join("");
+      document.getElementById("ef_start").value = fromISO.slice(0,16);
+      document.getElementById("ef_ende").value = toISO.slice(0,16);
+
+     els.modalEntry.show();
+els.modalEntry.style.position = "fixed";
+els.modalEntry.style.top = "50%";
+els.modalEntry.style.left = "50%";
+els.modalEntry.style.transform = "translate(-50%, -50%)";
+els.modalEntry.style.backdropFilter = "blur(6px)";
+els.modalEntry.style.background = "#fff";
+
+
+    }
+
+    function editEntry(e) {
+      els.entryForm.reset();
+      els.entryForm.dataset.mode = "update";
+      els.entryForm.dataset.id = e.id;
+      document.getElementById("ef_grund").innerHTML = state.gruende.map(g => `<option value="${g.id}" ${g.id===e.grund_id?"selected":""}>${g.name}</option>`).join("");
+      document.getElementById("ef_start").value = e.startzeit.slice(0,16);
+      document.getElementById("ef_ende").value = e.endzeit ? e.endzeit.slice(0,16) : "";
+      document.getElementById("ef_station").value = e.station || "";
+      document.getElementById("ef_desc").value = e.beschreibung || "";
+      // 🔻 Löschen-Button im Modal (immer neu verknüpfen)
+const modalFoot = els.modalEntry.querySelector(".modal-foot");
+let delBtn = modalFoot.querySelector(".btn-delete");
+
+// Wenn vorhanden, alten Listener ersetzen
+if (delBtn) delBtn.remove();
+
+// Neu erstellen & immer neu binden
+delBtn = document.createElement("button");
+delBtn.textContent = "Löschen";
+delBtn.className = "btn danger btn-delete";
+delBtn.onclick = async () => {
+  const ok = await confirm("Diesen Stillstand wirklich löschen?");
+  if (!ok) return;
+
+  const { error } = await supabase
+    .from("schichtbuch_eintraege")
+    .delete()
+    .eq("id", e.id);
+
+  if (error) {
+    alert("Löschen fehlgeschlagen!");
+    console.error(error);
+    return;
+  }
+
+  els.modalEntry.close();
+
+  // 🔥 Visuell sofort entfernen
+  const target = document.querySelector(`.entry-card[data-id="${e.id}"]`);
+  if (target) {
+    target.style.transition = "opacity .25s ease";
+    target.style.opacity = "0";
+    setTimeout(() => target.remove(), 250);
+  }
+
+  await loadEntries();
+  await loadAnalyse();
+
+  // ✅ Schöner Apple-Toast
+  const toast = document.createElement("div");
+  toast.className = "apple-toast";
+  toast.innerHTML = `<div class="toast-icon">🗑️</div><div class="toast-text">Eintrag gelöscht</div>`;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    toast.classList.add("hide");
+    setTimeout(() => toast.remove(), 450);
+  }, 2600);
+};
+modalFoot.prepend(delBtn);
+
+
+      els.modalEntry.showModal();
+document.documentElement.style.overflow = "auto";
+
+    }
+
+  async function saveEntry(ev) {
+  console.log("💾 saveEntry ausgelöst");
+  if (!(await ensureSession())) return;
+
+  ev.preventDefault();
+  if (!state.selectedLinieId) return;
+
+  const grund_id = document.getElementById("ef_grund").value || null;
+  const station = document.getElementById("ef_station").value || null;
+  const beschreibung = document.getElementById("ef_desc").value || null;
+
+  // 🕒 Werte holen
+  const startLocal = document.getElementById("ef_start").value;
+  const endLocal = document.getElementById("ef_ende").value;
+
+  // 🧠 ISO-konvertieren
+ const startzeit = startLocal;
+const endzeit = endLocal || null;
+
+
+  const payload = {
+    firma_id: state.currentFirmaId,
+    linie_id: state.selectedLinieId,
+    user_id: state.user.id,
+    grund_id,
+    startzeit,
+endzeit,
+
+    station,
+    beschreibung,
+  };
+
+  const mode = els.entryForm.dataset.mode;
+  if (mode === "create") {
+    const { error } = await supabase.from("schichtbuch_eintraege").insert(payload);
+    if (error) {
+      alert("Insert fehlgeschlagen (RLS/Policy?)");
+      console.error(error);
+      return;
+    }
+  } else {
+    const id = els.entryForm.dataset.id;
+    const { error } = await supabase.from("schichtbuch_eintraege").update(payload).eq("id", id);
+    if (error) {
+      alert("Update fehlgeschlagen (RLS/Policy?)");
+      console.error(error);
+      return;
+    }
+  }
+
+  els.modalEntry.close();
+  await loadEntries();
+  await loadAnalyse();
+  setAdminVisibility(); // ✅ jetzt ganz am Ende
+}
+
+
+    // ===========================
+    // ⚙️ SETTINGS (Admin)
+    // ===========================
+    // ===========================
+// 💾 BACKUP SYSTEM
+// ===========================
+
+async function createBackup(manual = false) {
+  if (!state.currentFirmaId) return;
+
+  // 🔄 Alle relevanten Tabellen abrufen
+  const [eintraege, linien, abteilungen, schichten, gruende, settings] = await Promise.all([
+    supabase.from("schichtbuch_eintraege").select("*").eq("firma_id", state.currentFirmaId),
+    supabase.from("linien").select("*").eq("firma_id", state.currentFirmaId),
+    supabase.from("abteilungen").select("*").eq("firma_id", state.currentFirmaId),
+    supabase.from("schichten").select("*").eq("firma_id", state.currentFirmaId),
+    supabase.from("stillstandsgruende").select("*").eq("firma_id", state.currentFirmaId),
+    supabase.from("firmen_settings").select("*").eq("firma_id", state.currentFirmaId) // 👈 NEU
+  ]);
+
+  const data = {
+    timestamp: new Date().toISOString(),
+    manual,
+    firma_id: state.currentFirmaId,
+    eintraege: eintraege.data ?? [],
+    linien: linien.data ?? [],
+    abteilungen: abteilungen.data ?? [],
+    schichten: schichten.data ?? [],
+    gruende: gruende.data ?? [],
+    settings: settings.data ?? [] // 👈 NEU
+  };
+
+  const { error } = await supabase.from("backups").insert({ firma_id: state.currentFirmaId, data });
+  if (error) {
+    console.error("Backup fehlgeschlagen:", error);
+    showToast("⚠️ Backup konnte nicht erstellt werden!", "error");
+  } else {
+    showToast(manual ? "💾 Backup gespeichert (manuell)" : "🕓 Tägliches Backup erstellt", "success");
+  }
+}
+
+
+async function restoreBackup() {
+  const ok = await confirm("⚠️ Sicher? Aktuelle Daten werden überschrieben, aber nicht gelöscht!");
+  if (!ok) return;
+
+  const { data, error } = await supabase
+    .from("backups")
+    .select("*")
+    .eq("firma_id", state.currentFirmaId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    showToast("Kein Backup gefunden!", "error");
+    return;
+  }
+
+  const b = data.data;
+  showToast("🔄 Backup wird wiederhergestellt...", "info");
+
+  // ⛔ nichts löschen! nur upserten (einfügen oder überschreiben)
+  await Promise.all([
+    supabase.from("linien").upsert(b.linien, { onConflict: "id" }),
+    supabase.from("abteilungen").upsert(b.abteilungen, { onConflict: "id" }),
+    supabase.from("schichten").upsert(b.schichten, { onConflict: "id" }),
+    supabase.from("stillstandsgruende").upsert(b.gruende, { onConflict: "id" }),
+    supabase.from("firmen_settings").upsert(b.settings, { onConflict: "id" })
+  ]);
+
+  // erst wenn Linien etc. stehen, Einträge einfügen
+  if (b.eintraege?.length) {
+    await supabase.from("schichtbuch_eintraege").upsert(b.eintraege, { onConflict: "id" });
+  }
+
+  showToast("✅ Backup erfolgreich wiederhergestellt (ohne Datenverlust)", "success");
+  await reloadStructure();
+  await loadEntries();
+  await loadAnalyse();
+}
+
+
+
+    function paintSettingsLists() {
+
+
+      // Abteilungen
+      els.listAbt.innerHTML = state.abteilungen.map(a => `
+        <div class="item-row">
+          <div class="item-title">${a.name}</div>
+          <div class="item-actions" data-admin-only>
+            <button class="ghost" data-act="edit-abt" data-id="${a.id}">Bearb.</button>
+            <button class="danger" data-act="del-abt" data-id="${a.id}">Löschen</button>
+          </div>
+        </div>`).join("") || `<div class="muted">Keine Abteilungen</div>`;
+      els.listAbt.querySelectorAll("button").forEach(b => b.addEventListener("click", onSettingsAction));
+
+      // Linien
+      els.listLinien.innerHTML = state.linien.map(l => `
+        <div class="item-row">
+         <div class="item-title">
+  ${l.name}
+  <span class="tag">
+    ${(() => {
+      const abt = state.abteilungen.find(a => a.id === l.abteilung_id);
+      return abt ? abt.name : "ohne Abt.";
+    })()}
+  </span>
+</div>
+
+          <div class="item-actions" data-admin-only>
+            <button class="ghost" data-act="edit-linie" data-id="${l.id}">Bearb.</button>
+            <button class="danger" data-act="del-linie" data-id="${l.id}">Löschen</button>
+          </div>
+        </div>`).join("") || `<div class="muted">Keine Linien</div>`;
+      els.listLinien.querySelectorAll("button").forEach(b => b.addEventListener("click", onSettingsAction));
+
+      // Schichten
+      els.listSchichten.innerHTML = state.schichten.map(s => `
+        <div class="item-row">
+          <div class="item-title">${s.name} — ${s.start.slice(0,5)}–${s.ende.slice(0,5)}</div>
+          <div class="item-actions" data-admin-only>
+            <button class="ghost" data-act="edit-schicht" data-id="${s.id}">Bearb.</button>
+            <button class="danger" data-act="del-schicht" data-id="${s.id}">Löschen</button>
+          </div>
+        </div>`).join("") || `<div class="muted">Keine Schichten</div>`;
+      els.listSchichten.querySelectorAll("button").forEach(b => b.addEventListener("click", onSettingsAction));
+
+      // Gründe
+      els.listGruende.innerHTML = state.gruende.map(g => `
+        <div class="item-row">
+          <div class="item-title">${g.name}</div>
+          <div class="item-actions" data-admin-only>
+            <button class="ghost" data-act="edit-grund" data-id="${g.id}">Bearb.</button>
+            <button class="danger" data-act="del-grund" data-id="${g.id}">Löschen</button>
+          </div>
+        </div>`).join("") || `<div class="muted">Keine Stillstandsgründe</div>`;
+      els.listGruende.querySelectorAll("button").forEach(b => b.addEventListener("click", onSettingsAction));
+
+      setTimeout(setAdminVisibility, 200);
+
+    }
+
+    async function onSettingsAction(ev) {
+      const id = ev.currentTarget.dataset.id;
+      const act = ev.currentTarget.dataset.act;
+
+      if (act === "del-abt") {
+        if (!confirm("Abteilung wirklich löschen? (Linien mit dieser Abteilung behalten ihre IDs, aber prüfe Daten)")) return;
+        const { error } = await supabase.from("abteilungen").delete().eq("id", id);
+        if (error) return alert("Löschen fehlgeschlagen.");
+        await reloadStructure();
+      }
+
+      if (act === "del-linie") {
+        if (!confirm("Linie löschen? (Achtung: Einträge behalten linie_id nicht mehr nutzbar)")) return;
+        const { error } = await supabase.from("linien").delete().eq("id", id);
+        if (error) return alert("Löschen fehlgeschlagen.");
+        await reloadStructure();
+        await loadEntries();
+      }
+
+      if (act === "del-schicht") {
+        if (!confirm("Schicht löschen?")) return;
+        const { error } = await supabase.from("schichten").delete().eq("id", id);
+        if (error) return alert("Löschen fehlgeschlagen.");
+        await reloadStructure();
+      }
+
+      if (act === "del-grund") {
+        if (!confirm("Grund löschen?")) return;
+        const { error } = await supabase.from("stillstandsgruende").delete().eq("id", id);
+        if (error) return alert("Löschen fehlgeschlagen.");
+        await reloadStructure();
+      }
+
+      if (act === "edit-abt") {
+        const item = state.abteilungen.find(a => a.id === id);
+        if (!item) return;
+        els.formAbt.dataset.edit = id;
+        els.formAbt.abt_name.value = item.name;
+        els.formAbt.querySelector("button[type='submit']").textContent = "Abteilung speichern";
+      }
+
+      if (act === "edit-linie") {
+        const item = state.linien.find(a => a.id === id);
+        if (!item) return;
+        els.formLinie.dataset.edit = id;
+        els.formLinie.linie_name.value = item.name;
+        els.formLinie.linie_abt.value = item.abteilung_id || "";
+        els.formLinie.querySelector("button[type='submit']").textContent = "Linie speichern";
+      }
+
+      if (act === "edit-schicht") {
+        const item = state.schichten.find(a => a.id === id);
+        if (!item) return;
+        els.formSchicht.dataset.edit = id;
+        els.formSchicht.s_name.value = item.name;
+        els.formSchicht.s_start.value = item.start;
+        els.formSchicht.s_ende.value = item.ende;
+        els.formSchicht.querySelector("button[type='submit']").textContent = "Schicht speichern";
+      }
+
+      if (act === "edit-grund") {
+        const item = state.gruende.find(a => a.id === id);
+        if (!item) return;
+        els.formGrund.dataset.edit = id;
+        els.formGrund.g_name.value = item.name;
+        els.formGrund.querySelector("button[type='submit']").textContent = "Grund speichern";
+      }
+    }
+
+
+    
+    async function saveAbteilung(ev) {
+
+console.log("💾 saveAbteilung ausgelöst");
+if (!(await ensureSession())) return;
+
+      ev.preventDefault();
+      const name = ev.target.abt_name.value.trim();
+      if (!name) return;
+
+      const payload = { name, firma_id: state.currentFirmaId };
+      if (ev.target.dataset.edit) {
+        const { error } = await supabase.from("abteilungen").update(payload).eq("id", ev.target.dataset.edit);
+        if (error) return alert("Speichern fehlgeschlagen (Abt).");
+      } else {
+        const { error } = await supabase.from("abteilungen").insert(payload);
+        if (error) return alert("Anlegen fehlgeschlagen (Abt).");
+      }
+      ev.target.reset(); ev.target.dataset.edit = "";
+      ev.target.querySelector("button[type='submit']").textContent = "Abteilung anlegen";
+      await reloadStructure();
+updateLinienAbtDropdown();
+
+    }
+
+    async function saveLinie(ev) {
+  ev.preventDefault();
+  if (!(await ensureSession())) return;
+
+  const name = ev.target.linie_name.value.trim();
+  if (!name) return;
+
+  // 👇 Abteilung prüfen
+  const abt = ev.target.linie_abt.value || null;
+  const payload = {
+    name,
+    abteilung_id: abt || null,
+    firma_id: state.currentFirmaId,
+  };
+
+  // 👇 Wenn abt null → null explizit schreiben, nie undefined
+  if (ev.target.dataset.edit) {
+    const { error } = await supabase
+      .from("linien")
+      .update(payload)
+      .eq("id", ev.target.dataset.edit);
+    if (error) return alert("Speichern fehlgeschlagen (Linie).");
+  } else {
+    const { error } = await supabase.from("linien").insert(payload);
+    if (error) return alert("Anlegen fehlgeschlagen (Linie).");
+  }
+
+  ev.target.reset();
+  ev.target.dataset.edit = "";
+  ev.target.querySelector("button[type='submit']").textContent = "Linie anlegen";
+
+  await reloadStructure();
+  updateLinienAbtDropdown();
+}
+
+
+   async function saveSchicht(ev) {
+  console.log("💾 saveSchicht ausgelöst");
+  if (!(await ensureSession())) return;
+
+  ev.preventDefault();
+
+  // Felder sauber referenzieren (auch wenn Reihenfolge sich ändert)
+  const form = ev.target;
+  const name = form.querySelector("[name='s_name']").value.trim();
+  const start = form.querySelector("[name='s_start']").value;
+  const ende = form.querySelector("[name='s_ende']").value;
+
+  if (!name || !start || !ende) {
+    alert("Bitte alle Felder ausfüllen!");
+    return;
+  }
+
+  const payload = {
+    name,
+    start,
+    ende,
+    firma_id: state.currentFirmaId
+  };
+
+  if (form.dataset.edit) {
+    const { error } = await supabase
+      .from("schichten")
+      .update(payload)
+      .eq("id", form.dataset.edit);
+    if (error) {
+      console.error(error);
+      alert("Speichern fehlgeschlagen (Schicht-Update).");
+      return;
+    }
+  } else {
+    const { error } = await supabase.from("schichten").insert(payload);
+    if (error) {
+      console.error(error);
+      alert("Anlegen fehlgeschlagen (Schicht-Neu).");
+      return;
+    }
+  }
+
+  form.reset();
+  form.dataset.edit = "";
+  form.querySelector("button[type='submit']").textContent = "Schicht anlegen";
+  showToast("✅ Schicht gespeichert", "success");
+
+  await reloadStructure();
+}
+
+
+    async function saveGrund(ev) {
+      console.log("💾 saveAbteilung ausgelöst");
+if (!(await ensureSession())) return;
+
+      ev.preventDefault();
+      const name = ev.target.g_name.value.trim();
+      if (!name) return;
+      const payload = { name, firma_id: state.currentFirmaId };
+
+      if (ev.target.dataset.edit) {
+        const { error } = await supabase.from("stillstandsgruende").update(payload).eq("id", ev.target.dataset.edit);
+        if (error) return alert("Speichern fehlgeschlagen (Grund).");
+      } else {
+        const { error } = await supabase.from("stillstandsgruende").insert(payload);
+        if (error) return alert("Anlegen fehlgeschlagen (Grund).");
+      }
+      ev.target.reset(); ev.target.dataset.edit = "";
+      ev.target.querySelector("button[type='submit']").textContent = "Grund anlegen";
+      await reloadStructure();
+    }
+
+    // ===========================
+    // 🔎 SUCHE & ANALYSE
+    // ===========================
+    async function searchEntries() {
+      const q = els.searchInput.value.trim();
+      if (!q || !state.selectedLinieId) { els.searchList.innerHTML = ""; return; }
+      const start = new Date(state.selectedDate); start.setHours(0,0,0,0);
+      const { data, error } = await supabase
+        .from("schichtbuch_eintraege")
+        .select("*, stillstandsgruende ( name )")
+        .eq("firma_id", state.currentFirmaId)
+        .eq("linie_id", state.selectedLinieId)
+        .or(`beschreibung.ilike.%${q}%,station.ilike.%${q}%`)
+        .gte("startzeit", new Date(start.getTime() - 1000*60*60*24*28).toISOString()) // bis 4 Wochen zurück
+        .order("startzeit", { ascending: false });
+
+      if (error) { console.error(error); return; }
+      els.searchList.innerHTML = (data ?? []).slice(0,30).map(e => `
+        <div class="result-row">
+          <div class="result-title">${e.stillstandsgruende?.name || "Stillstand"} • ${new Date(e.startzeit).toLocaleDateString()} ${new Date(e.startzeit).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="result-sub">${e.station ? `Station: ${e.station} — `:""}${e.beschreibung || ""}</div>
+        </div>`).join("") || `<div class="muted">Nichts gefunden</div>`;
+    }
+
+    async function loadAnalyse() {
+      if (!state.selectedLinieId) { els.anaCards.innerHTML = `<div class="muted">Keine Linie gewählt</div>`; return; }
+      const mode = els.anaRange.value; // day | 4w | 1y
+      const end = new Date();
+      const start = new Date();
+      if (mode === "day") start.setHours(0,0,0,0);
+      if (mode === "4w") start.setDate(end.getDate() - 28);
+      if (mode === "1y") start.setFullYear(end.getFullYear() - 1);
+
+      const { data, error } = await supabase.rpc("cirus_aggregate_schichtbuch", {
+        p_firma: state.currentFirmaId,
+        p_linie: state.selectedLinieId,
+        p_start: start.toISOString(),
+        p_end: end.toISOString()
+      });
+      // Falls du die RPC noch nicht angelegt hast, fallback clientseitig:
+      if (error || !data) {
+        const { data: rows } = await supabase
+          .from("schichtbuch_eintraege")
+          .select("station, grund_id, stillstandsgruende ( name ), startzeit, endzeit")
+          .eq("firma_id", state.currentFirmaId)
+          .eq("linie_id", state.selectedLinieId)
+          .gte("startzeit", start.toISOString())
+          .lte("startzeit", end.toISOString());
+
+        const agg = {};
+        (rows ?? []).forEach(r => {
+          const name = r.stillstandsgruende?.name || "Unbekannt";
+          const key = `${r.station || "Station?"}__${name}`;
+          const dur = Math.max(1, ((new Date(r.endzeit||r.startzeit) - new Date(r.startzeit)) / 60000)|0);
+          if (!agg[key]) agg[key] = { count: 0, min: 0, station: r.station || "Station?", grund: name };
+          agg[key].count += 1;
+          agg[key].min += dur;
+        });
+        const top = Object.values(agg).sort((a,b)=>b.min-a.min).slice(0,6);
+        els.anaCards.innerHTML = top.map(t => `
+          <div class="card">
+            <div class="card-title">${t.station}</div>
+            <div class="card-sub">${t.grund}</div>
+            <div class="metric">${t.min} min</div>
+            <div class="muted">Vorkommen: ${t.count}</div>
+          </div>`).join("") || `<div class="muted">Keine Daten</div>`;
+        return;
+      }
+
+      // Wenn RPC existiert:
+      els.anaCards.innerHTML = (data ?? []).map(t => `
+        <div class="card">
+          <div class="card-title">${t.station}</div>
+          <div class="card-sub">${t.grund}</div>
+          <div class="metric">${t.minuten} min</div>
+          <div class="muted">Vorkommen: ${t.anzahl}</div>
+        </div>`).join("") || `<div class="muted">Keine Daten</div>`;
+    }
+
+    function debounce(fn, ms) {
+      let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn(...args), ms); };
+    }
+
+    // Start
+    window.addEventListener("DOMContentLoaded", init);
+    supabase.auth.getSession().then(({ data }) => {
+  console.log("🧩 Testsession:", data.session ? "Session gefunden ✅" : "❌ Keine Session");
+  console.log("Session-Daten:", data);
+});
+// ===============================================
+// 🔁 Linien-Dropdown automatisch aktualisieren
+// ===============================================
+
+function enableHalfRowHover() {
+  const rows = document.querySelectorAll(".half-hour-row");
+
+  rows.forEach(row => {
+    row.addEventListener("mousemove", e => {
+      const rect = row.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+
+      // Obere oder untere Hälfte bestimmen
+      const isBottom = y > rect.height / 2;
+
+      // alte Klassen löschen
+      row.classList.remove("hover-top", "hover-bottom");
+
+      // neue hinzufügen
+      row.classList.add(isBottom ? "hover-bottom" : "hover-top");
+    });
+
+    row.addEventListener("mouseleave", () => {
+      row.classList.remove("hover-top", "hover-bottom");
+    });
+  });
+}
+function showHint(msg) {
+  const hint = document.getElementById("selection-hint");
+  if (hint) {
+    hint.textContent = msg;
+    hint.style.display = "block";
+  }
+}
+
+function hideHint() {
+  const hint = document.getElementById("selection-hint");
+  if (hint) hint.style.display = "none";
+}
+
+  </script>
+
+  <style>
+    .disabled-lock {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#selection-hint {
+  text-align: center;
+  color: #d00;
+  font-size: 14px;
+  margin: 10px 0;
+  display: none;
+}
+
+    .confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .25s ease;
+  z-index: 999999;
+}
+
+.confirm-overlay.show { opacity: 1; }
+
+.confirm-box {
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  border-radius: 18px;
+  padding: 28px 34px 24px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  font-family: "SF Pro Display",-apple-system,sans-serif;
+  text-align: center;
+  transform: translateY(20px);
+  animation: dialogPop .3s ease forwards;
+}
+
+@keyframes dialogPop {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.confirm-text {
+  font-size: 15px;
+  color: #111;
+  margin-bottom: 22px;
+}
+
+.confirm-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.confirm-buttons button {
+  font-size: 14px;
+  padding: 8px 20px;
+  border-radius: 30px;
+  border: none;
+  cursor: pointer;
+  transition: all .2s ease;
+  font-weight: 600;
+}
+
+.btn-cancel {
+  background: rgba(240,240,240,0.9);
+  color: #333;
+}
+.btn-cancel:hover { background: rgba(225,225,225,1); }
+
+.btn-ok {
+  background: #ff3b30;
+  color: white;
+}
+.btn-ok:hover {
+  background: #e12a1f;
+}
+
+    #panelSettings {
+  display: none;
+  padding: 18px;
+  overflow-y: auto;            /* ← Scroll aktivieren */
+  max-height: calc(100vh - 80px); /* ← passt sich Bildschirmhöhe an */
+  scroll-behavior: smooth;     /* ← sanftes Scrollen */
+}
+
+/* Optional Apple-clean Scrollbar */
+#panelSettings::-webkit-scrollbar {
+  width: 8px;
+}
+#panelSettings::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 999px;
+}
+#panelSettings::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.25);
+}
+
+  .shift-line {
+  position: absolute;
+  left: 110px;
+  right: 24px;
+  height: 4px;
+  background: linear-gradient(90deg, #ff9500 0%, #ffb347 100%);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(255,149,0,0.5);
+  z-index: 2;
+  opacity: 0.95;
+}
+
+.shift-line .shift-label {
+  position: absolute;
+  left: -95px;
+  top: -10px;
+  font-size: 12px;
+  color: #ff9500;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.entry-card { z-index: 3; } /* sicher drüber */
+
+.shift-line.start::before {
+  content: "Schichtbeginn";
+  position: absolute;
+  left: -95px;
+  top: -8px;
+  font-size: 12px;
+  color: #ff9500;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.shift-line.end::before {
+  content: "Schichtende";
+  position: absolute;
+  left: -80px;
+  top: -8px;
+  font-size: 12px;
+  color: #ff9500;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+    /* 🌈 Apple-Style Timeline Entry */
+.entry-card {
+  position: absolute;
+  left: 110px;
+  right: 24px;
+  border-radius: 14px;
+  overflow: visible;
+  cursor: pointer;
+}
+
+/* Blauer Balken – kompakt */
+.entry-bar {
+  width: 160px;
+  height: 100%;
+  background: linear-gradient(160deg,#007aff,#4da3ff);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: "SF Pro Display",-apple-system,sans-serif;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,122,255,.25);
+  transition: all 0.3s ease;
+}
+.entry-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 13px;
+  letter-spacing: .3px;
+}
+.entry-station { font-size: 14px; }
+.entry-duration { font-size: 12.5px; opacity: .85; }
+
+/* Hover-Box */
+.entry-hoverbox {
+  position: absolute;
+  left: 180px;
+  top: 50%;
+  transform: translateY(-50%) scale(.95);
+  opacity: 0;
+  min-width: 260px;
+  max-width: 360px;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(20px) saturate(1.8);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: 14px 18px;
+  color: #111;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+  transition: all 0.25s ease;
+  pointer-events: none;
+}
+.entry-title {
+  font-weight: 600;
+  font-size: 14.5px;
+  margin-bottom: 6px;
+}
+.entry-desc {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #333;
+}
+
+/* Hover-Animation */
+.entry-card:hover .entry-hoverbox {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+.entry-card:hover .entry-bar {
+  filter: brightness(1.1);
+  box-shadow: 0 8px 20px rgba(0,122,255,.35);
+}
+
+
+
+
+
+   /* 🍏 Apple Glass Toast (Final Version) */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(40px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(40px) scale(0.96); }
+}
+
+.apple-toast {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  padding: 14px 22px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(25px) saturate(1.5);
+  color: #111;
+  font-family: "SF Pro Display", -apple-system, sans-serif;
+  font-weight: 500;
+  font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  opacity: 0;
+  transform: translateY(40px);
+  z-index: 999999;
+  pointer-events: none;
+  transition: all .3s ease;
+}
+
+.apple-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.apple-toast.hide {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+.apple-toast.success { background: rgba(76,217,100,0.85); color: #fff; }
+.apple-toast.error   { background: rgba(255,59,48,0.85);  color: #fff; }
+.apple-toast.info    { background: rgba(255,255,255,0.75); color:#111; }
+
+
+.apple-toast .toast-icon {
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.apple-toast .toast-text {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+
+/* 🌈 Stil für Einträge in der Timeline */
+.entry {
+  position: absolute;
+  left: 116px;
+  right: 16px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #007aff, #4da3ff);
+  color: white;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(0,122,255,0.25);
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.entry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,122,255,0.35);
+}
+
+.entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.entry-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.entry-desc {
+  font-size: 12px;
+  opacity: 0.9;
+  line-height: 1.3;
+}
+
+.entry-right {
+  text-align: right;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-station {
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.entry-duration {
+  font-weight: 600;
+  opacity: 0.9;
+  font-feature-settings: "tnum";
+}
+
+
+
+    /* 🌈 APPLE-LIKE MODAL DESIGN */
+.apple-modal {
+  border: none;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(25px) saturate(1.4);
+  color: #111;
+  width: min(640px, 95vw);
+  padding: 0;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: modalIn 0.25s ease;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-container { display: flex; flex-direction: column; }
+
+.modal-head {
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 18px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.modal-body {
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: #555;
+  font-weight: 600;
+}
+
+.input-big,
+.input-time,
+textarea,
+select {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.15);
+  background: rgba(255,255,255,0.6);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+  transition: all 0.2s ease;
+}
+
+.input-big:focus,
+.input-time:focus,
+textarea:focus,
+select:focus {
+  border-color: #007aff;
+  outline: none;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(0,122,255,0.2);
+}
+
+/* 🕓 Zeitfelder */
+.input-time {
+  text-align: left;
+  font-family: "SF Pro Display", sans-serif;
+  letter-spacing: 0.3px;
+}
+
+/* 📝 Beschreibung */
+textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.45;
+  font-family: "SF Pro Display", sans-serif;
+}
+
+/* Footer */
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(8px);
+}
+
+.modal-foot .btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-foot .btn.primary {
+  background: #007aff;
+  color: #fff;
+  border: none;
+}
+
+.modal-foot .btn.primary:hover {
+  background: #0066d6;
+}
+
+.modal-foot .btn.ghost {
+  background: #f5f5f5;
+}
+
+.modal-foot .btn.ghost:hover {
+  background: #ececec;
+}
+
+    
+
+
+.timeline-wrap {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(#fff, #fcfcff);
+  max-height: calc(100vh - 160px); /* passt sich an Fensterhöhe an */
+  border-right: 1px solid var(--line);
+}
+
+#timeline {
+  position: relative;
+  background: linear-gradient(#fff, #fafcff);
+  width: 100%;
+}
+
+
+  /* 30-Minuten-Raster */
+
+
+.half-hour-row {
+  position: relative;
+  height: 30px;
+  border-top: 1px dashed #e5e7eb;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+/* Grund-Lila für Hover */
+.half-hour-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(125, 90, 255, 0.10);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+
+/* === obere Hälfte dunkler === */
+.half-hour-row.hover-top::before {
+  opacity: 1;
+  background:
+    linear-gradient(to bottom,
+      rgba(125, 90, 255, 0.30) 0%,
+      rgba(125, 90, 255, 0.22) 50%,
+      rgba(125, 90, 255, 0.10) 50%,
+      rgba(125, 90, 255, 0.10) 100%);
+}
+
+/* === untere Hälfte dunkler === */
+.half-hour-row.hover-bottom::before {
+  opacity: 1;
+  background:
+    linear-gradient(to bottom,
+      rgba(125, 90, 255, 0.10) 0%,
+      rgba(125, 90, 255, 0.10) 50%,
+      rgba(125, 90, 255, 0.22) 50%,
+      rgba(125, 90, 255, 0.30) 100%);
+}
+
+
+
+/* 🌈 Schicht-Marker (Farbstreifen) */
+.shift-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  opacity: 0.15;
+  background: rgba(0,0,0,0.03);
+  border-left-width: 6px !important;
+}
+
+
+
+/* ⏱️ Laufende Zeitlinie */
+.now-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ff3b30;
+  box-shadow: 0 0 8px rgba(255,59,48,0.6);
+  z-index: 5;
+}
+
+      :root{
+      --bg:#f5f5f7;
+      --panel:#ffffff;
+      --ink:#0b0b0c;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --accent:#007aff;
+      --accent-ink:#fff;
+      --radius:22px;
+      --shadow:0 20px 40px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      display:flex; gap:0;
+    }
+
+    /* Sidebar (rechts, von unten nach oben) */
+    .sidebar{
+      width:84px; background:#000; color:#fff; display:flex; flex-direction:column; justify-content:space-between;
+      padding:16px 10px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .navcol{display:flex; flex-direction:column; gap:8px}
+    .sbtn{
+      border:0; background:transparent; color:#fff; width:100%; aspect-ratio:1;
+      display:grid; place-items:center; border-radius:16px; font-size:22px; cursor:pointer; transition:.18s transform,.18s opacity;
+    }
+    .sbtn:hover{opacity:.9; transform:translateY(-1px)}
+    .sbtn[data-variant="primary"]{background:#0a0a0a; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
+    .sbtn span{font-size:12px; display:block; margin-top:6px; opacity:.85}
+
+    /* Main */
+    .main{
+      flex:1; display:flex; flex-direction:column; margin:14px; border-radius:var(--radius); background:var(--panel);
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+
+    .header{
+      padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    }
+    .header h2{margin:0 12px 0 0; font-size:18px}
+    .chip{padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:#fafafa}
+    select,input[type="date"],input,button{font:inherit}
+    select,input[type="date"]{padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:#fff}
+
+    /* Panels */
+    #panelSchichtbuch{flex:1; display:flex}
+    #panelAnalyse{display:none; padding:18px}
+    #panelSettings{display:none; padding:18px}
+
+    /* Left column: timeline + search */
+    .left-col{flex:1; display:flex; flex-direction:column; border-right:1px solid var(--line)}
+    .searchbar{padding:10px 14px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center}
+    .searchbar input{flex:1; padding:10px 12px; border:1px solid var(--line); border-radius:12px}
+
+    .timeline-wrap{position:relative; flex:1; overflow:auto; background:linear-gradient(#fff,#fcfcff)}
+    .hour-row{position:relative; height:60px; border-top:1px dashed #eee;}
+    .hour-row:first-child{border-top:0}
+    .hour-label{position:absolute; left:12px; top:6px; font-size:12px; color:var(--muted)}
+    .hour-grid{position:absolute; left:100px; right:12px; top:0; bottom:0}
+
+    .entry{
+      position:absolute; left:116px; right:16px; border-radius:10px; background:var(--accent); color:var(--accent-ink);
+      padding:8px 10px; box-shadow:0 6px 14px rgba(0,122,255,.25); cursor:pointer; border:1px solid rgba(255,255,255,.4);
+    }
+    .entry-title{font-weight:600}
+    .entry-sub{opacity:.9; font-size:12px; margin-top:2px}
+
+    /* Right column: info cards (analyse) */
+    .ana-row{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px}
+    .card{border:1px solid var(--line); border-radius:16px; padding:12px 14px; background:#fff}
+    .card-title{font-weight:600; margin-bottom:2px}
+    .card-sub{color:var(--muted); font-size:12px}
+    .metric{font-size:22px; font-weight:700; margin-top:8px}
+
+    /* Settings */
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+    .group{border:1px solid var(--line); border-radius:16px; padding:14px; background:#fff}
+    .group h3{margin:0 0 10px 0; font-size:15px}
+    .item-row{display:flex; align-items:center; justify-content:space-between; padding:10px 8px; border:1px solid #eee; border-radius:12px; margin-bottom:8px}
+    .item-title{font-weight:600}
+    .item-actions{display:flex; gap:8px}
+    .tag{font-size:11px; background:#f1f5f9; color:#334155; padding:2px 6px; border-radius:999px; margin-left:6px}
+    .muted{color:var(--muted)}
+    .ghost{background:#f7fafc; border:1px solid var(--line); padding:8px 10px; border-radius:10px; cursor:pointer}
+    .danger{background:#fff5f5; border:1px solid #fecaca; color:#b91c1c; padding:8px 10px; border-radius:10px; cursor:pointer}
+
+    /* Modal */
+    dialog{border:0; border-radius:16px; padding:0; box-shadow:0 40px 80px rgba(0,0,0,.2); width:min(560px,92vw)}
+    .modal-head{padding:14px 16px; border-bottom:1px solid var(--line); font-weight:700}
+    .modal-body{padding:14px 16px; display:grid; gap:12px}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    .modal-foot{display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid var(--line)}
+    .btn{padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:#fff; cursor:pointer}
+    .btn.primary{background:var(--accent); color:#fff; border-color:transparent}
+    .btn.ghost{background:#f7fafc}
+
+    /* Header Pills */
+    .header .chip select{border:0; background:transparent; padding:0}
+    .header .chip input{border:0; background:transparent; padding:0}
+  </style>
+</head>
+<body>
+  <!-- RIGHT BLACK SIDEBAR -->
+  <aside class="sidebar">
+    <div class="navcol">
+      <button class="sbtn" data-nav="sb" title="Schichtbuch">📘</button>
+      <button class="sbtn" data-nav="ana" title="Analyse">📊</button>
+      <button class="sbtn" data-nav="set" title="Einstellungen" style="display:none">⚙️</button>
+    </div>
+    <button class="sbtn" data-nav="back" title="Zurück">⬅️</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="header">
+      <h2>Schichtbuch</h2>
+
+      <div class="chip">
+        <label>Firma </label>
+        <select id="firmaSelect"></select>
+      </div>
+
+      <div class="chip">
+        <label>Abteilung </label>
+        <select id="abtSelect"></select>
+      </div>
+
+      <div class="chip">
+        <label>Linie </label>
+        <select id="linieSelect"></select>
+      </div>
+
+      <div class="chip">
+        <label>Tag </label>
+        <input type="date" id="dateInput"/>
+      </div>
+    </div>
+
+    <!-- PANEL: Schichtbuch -->
+    <section id="panelSchichtbuch">
+      <div class="left-col">
+        <div class="searchbar">
+          <input id="searchInput" placeholder="Suche: Station, Beschreibung …"/>
+        </div>
+        <div class="timeline-wrap">
+  <div id="timeline"></div>
+</div>
+<div id="selection-hint">Bitte zuerst Abteilung und Linie auswählen.</div>
+
+      </div>
+      <div style="width:360px; padding:14px">
+        <h3 style="margin:0 0 10px 0">Tages-Analyse</h3>
+        <div class="card">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div class="muted">Zeitraum</div>
+            <select id="anaRange">
+              <option value="day">Heute</option>
+              <option value="4w">Letzte 4 Wochen</option>
+              <option value="1y">Letztes Jahr</option>
+            </select>
+          </div>
+        </div>
+        <div id="anaCards" class="ana-row" style="margin-top:10px"></div>
+
+        <h3 style="margin:16px 0 8px 0">Ähnliche Einträge</h3>
+        <div id="searchList" class="list"></div>
+      </div>
+    </section>
+
+    <!-- PANEL: Analyse -->
+    <section id="panelAnalyse">
+      <h3 style="margin-top:0">Fehler-Heatmap (Top Ursachen & Stationen)</h3>
+      <p class="muted">Wähle rechts oben den Zeitraum im Schichtbuch-Panel, diese Seite zeigt dieselben Daten in Kartenform. Diagramme (Heatmap/Bar) kannst du hier später einfach ergänzen.</p>
+      <div id="anaCards" class="ana-row"></div>
+    </section>
+
+    <!-- PANEL: Settings (Admin/Owner) -->
+    <section id="panelSettings">
+      <div class="grid-2">
+        <div class="group">
+  <h3>Backup & Wiederherstellung</h3>
+  <p class="muted">Erstelle manuell ein Backup oder stelle den letzten Stand wieder her.</p>
+  <div class="row" style="margin-top:8px">
+    <button id="btnBackupNow" class="btn primary">📦 Backup jetzt erstellen</button>
+    <button id="btnRestore" class="btn ghost">♻️ Letztes Backup laden</button>
+  </div>
+</div>
+
+        <!-- NEU: Firmenweite Einstellungen -->
+<div class="group">
+  <h3>Allgemeine Einstellungen</h3>
+  <form id="formSettings" data-admin-only onsubmit="return false;">
+
+    <div class="row">
+      <label>Schichtanzahl
+        <input type="number" name="schichtanzahl" min="1" max="5" />
+      </label>
+      <label>Farbschema
+        <select name="farbschema">
+          <option value="apple-clean">Apple Clean</option>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+      <label>Zeitzone
+  <select name="timezone">
+    <option value="Europe/Berlin">Europe/Berlin (Deutschland)</option>
+    <option value="Europe/Vienna">Europe/Vienna (Österreich)</option>
+    <option value="Europe/Zurich">Europe/Zurich (Schweiz)</option>
+    <option value="Europe/Athens">Europe/Athens (Griechenland)</option>
+    <option value="Europe/Paris">Europe/Paris (Frankreich)</option>
+    <option value="Europe/London">Europe/London (UK)</option>
+    <option value="America/New_York">America/New_York (USA Ostküste)</option>
+    <option value="Asia/Tokyo">Asia/Tokyo (Japan)</option>
+  </select>
+</label>
+
+    </div>
+    <div class="row">
+      <label>FS Start <input type="time" name="fs_start" /></label>
+      <label>FS Ende  <input type="time" name="fs_ende" /></label>
+    </div>
+    <div class="row">
+      <label>SS Start <input type="time" name="ss_start" /></label>
+      <label>SS Ende  <input type="time" name="ss_ende" /></label>
+    </div>
+    <div class="row">
+      <label>NS Start <input type="time" name="ns_start" /></label>
+      <label>NS Ende  <input type="time" name="ns_ende" /></label>
+    </div>
+    <div class="row">
+      <label><input type="checkbox" name="mitarbeiter_duerfen_gruende_anlegen" /> Mitarbeiter dürfen eigene Gründe anlegen</label>
+      <label><input type="checkbox" name="stations_editierbar" /> Stationen editierbar</label>
+    </div>
+    <div class="modal-foot" style="padding:0;margin-top:10px">
+      <button type="submit" class="btn primary">Speichern</button>
+    </div>
+  </form>
+</div>
+
+        <div class="group">
+          <h3>Abteilungen</h3>
+         <form id="formAbt" data-admin-only>
+
+            <div class="row">
+              <input name="abt_name" placeholder="Name (z. B. PCE)" />
+              <button type="submit" class="btn">Abteilung anlegen</button>
+            </div>
+          </form>
+          <div id="listAbt" style="margin-top:12px"></div>
+        </div>
+
+        <div class="group">
+          <h3>Linien</h3>
+          <form id="formLinie" data-admin-only>
+            <div class="row">
+              <input name="linie_name" placeholder="Name (z. B. 222)" />
+              <select name="linie_abt">
+                <option value="">(keine Abteilung)</option>
+              </select>
+            </div>
+            <div class="modal-foot" style="padding:0;margin-top:10px">
+              <button type="submit" class="btn">Linie anlegen</button>
+            </div>
+          </form>
+          <div id="listLinien" style="margin-top:12px"></div>
+        </div>
+
+        <div class="group">
+          <h3>Schichten</h3>
+          <form id="formSchicht" data-admin-only>
+            <div class="row">
+              <input name="s_name" placeholder="FS / SS / NS" />
+              <input type="time" name="s_start" />
+            </div>
+            <div class="row">
+              <input type="time" name="s_ende" />
+              <button type="submit" class="btn">Schicht anlegen</button>
+            </div>
+          </form>
+          <div id="listSchichten" style="margin-top:12px"></div>
+        </div>
+
+        <div class="group">
+          <h3>Stillstandsgründe</h3>
+          <form id="formGrund" data-admin-only>
+            <div class="row">
+              <input name="g_name" placeholder="z. B. Material leer" />
+              <button type="submit" class="btn">Grund anlegen</button>
+            </div>
+          </form>
+          <div id="listGruende" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+ 
+  <!-- 🌙 Modernes Apple-like Modal -->
+<dialog id="modalEntry" class="apple-modal">
+  <div class="modal-container">
+    <div class="modal-head">
+      <h3>🕒 Stillstand erfassen</h3>
+    </div>
+
+    <form id="entryForm" autocomplete="off">
+      <div class="modal-body">
+
+        <!-- 🔹 Erste Zeile: Station + Grund -->
+        <div class="row-2">
+          <div class="form-group">
+            <label>📍 Station</label>
+            <input id="ef_station" placeholder="z. B. Vormontage" class="input-big" />
+          </div>
+          <div class="form-group">
+            <label>⚙️ Grund</label>
+            <select id="ef_grund" class="input-big"></select>
+          </div>
+        </div>
+
+        <!-- 🔹 Zweite Zeile: Zeit Start + Ende -->
+        <div class="row-2">
+          <div class="form-group">
+            <label>🕕 Start</label>
+            <input id="ef_start" type="datetime-local" step="1" class="input-time" />
+          </div>
+          <div class="form-group">
+            <label>🕘 Ende</label>
+            <input id="ef_ende" type="datetime-local" step="1" class="input-time" />
+          </div>
+        </div>
+
+        <!-- 🔹 Beschreibung -->
+        <div class="form-group">
+          <label>📝 Beschreibung</label>
+          <textarea id="ef_desc" placeholder="z. B. Material leer, Gehäuse auf Nacharbeit warten …"></textarea>
+        </div>
+
+      </div>
+
+      <div class="modal-foot">
+        <button type="button" class="btn ghost" onclick="document.getElementById('modalEntry').close()">Abbrechen</button>
+        <button type="submit" class="btn primary">💾 Speichern</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+
+  
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tenra – Planer</title>
+<meta name="color-scheme" content="light" />
+
+<style>
+:root {
+  --bg: #f8f9fb;
+  --panel: #ffffff;
+  --ink: #0b0b10;
+  --muted: #6d7380;
+  --line: #e3e6eb;
+  --accent: #007aff;
+  --radius: 20px;
+  --shadow: 0 10px 30px rgba(0,0,0,0.04);
+  --hover: rgba(0,122,255,0.06);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+/* ================== Header ================== */
+header {
+  position: sticky;
+  top: 0;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  z-index: 10;
+}
+header h1 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: linear-gradient(135deg, #007aff, #00c6ff);
+}
+.meta {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  font-size: 14px; color: var(--muted);
+}
+.pill {
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+button {
+  font: inherit;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+button:hover { background: #006ae0; transform: translateY(-1px); }
+button.ghost {
+  background: #fff;
+  color: var(--accent);
+  border: 1px solid var(--line);
+}
+button.ghost:hover { background: var(--hover); }
+
+/* ================== Main Layout ================== */
+main {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 0 20px;
+  display: grid;
+  gap: 24px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+.hero h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.hero p { color: var(--muted); margin: 4px 0 14px; }
+.hero .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.apps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 22px;
+}
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 26px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.tile:hover { border-color: var(--accent); box-shadow: 0 6px 22px rgba(0,122,255,0.08); }
+.tile h3 {
+  margin: 0 0 8px;
+  font-weight: 600;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tile p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.tile .icon {
+  font-size: 38px;
+  opacity: 0.15;
+  align-self: flex-end;
+}
+
+/* Modal */
+dialog {
+  border: none;
+  border-radius: 14px;
+  padding: 0;
+  width: min(460px, 92vw);
+  background: #fff;
+  box-shadow: 0 20px 70px rgba(0,0,0,0.25);
+}
+dialog::backdrop { background: rgba(0,0,0,0.25); backdrop-filter: blur(3px); }
+.modal-head { padding: 16px 18px; border-bottom: 1px solid var(--line); font-weight: 600; }
+.modal-body { padding: 18px; display: grid; gap: 12px; }
+.firm-list { display: grid; gap: 10px; }
+.firm-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.error {
+  background: #fff5f5;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="logo-dot"></span>Tenra Planer</h1>
+  <div class="meta">
+    <span class="pill" id="firm-label">Firma: –</span>
+    <span class="pill" id="role-label">Rolle: –</span>
+    <span class="pill" id="user-label">User: –</span>
+    <button id="switch-firm" class="ghost">Firma wechseln</button>
+    <button id="logout">Logout</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <h2>Willkommen im Tenra Planer</h2>
+    <p>Wähle ein Modul, um mit der Planung zu starten. Deine Firmenauswahl wird automatisch gespeichert.</p>
+    <div class="actions">
+      <button id="go-ma">👥 Mitarbeiter-Planung</button>
+      <button id="go-band" class="ghost" style="display:none;">🏭 Bandplanung</button>
+
+      <button id="go-view" class="ghost">📊 Mitarbeiter-Ansicht</button>
+    </div>
+  </section>
+
+  <section class="apps">
+    <div class="tile" id="tile-ma">
+      <h3>👥 Mitarbeiter-Planung</h3>
+      <p>Schichten, 9–5, Urlaub und Kommentare einfach verwalten.</p>
+      <div class="icon">👥</div>
+    </div>
+<div class="tile" id="tile-band" style="display:none;">
+  <h3>🏭 Bandplanung</h3>
+  <p>Bänder, Teams und Kapazitäten pro Tag planen.</p>
+  <div class="icon">🏭</div>
+</div>
+
+    <div class="tile" id="tile-view">
+      <h3>📊 Mitarbeiter-Ansicht</h3>
+      <p>Persönliche Tagesübersicht für alle Mitarbeiter.</p>
+      <div class="icon">📊</div>
+    </div>
+  </section>
+</main>
+
+<!-- Firmenauswahl -->
+<dialog id="firm-modal">
+  <div class="modal-head">Firma auswählen</div>
+  <div class="modal-body">
+    <div class="firm-list" id="firm-list"></div>
+    <div class="error" id="no-firm" style="display:none">
+      Kein Firmenzugang (status=accepted) gefunden.
+    </div>
+    <div style="text-align:right">
+      <button class="ghost" id="close-modal">Schließen</button>
+    </div>
+  </div>
+</dialog>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// === Supabase ===
+const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// === State ===
+const state = {
+  session:null, user:null, firms:[],
+  currentFirmaId: localStorage.getItem("Tenra.currentFirmaId") || null,
+  currentRole: localStorage.getItem("Tenra.currentRole") || null
+};
+
+// === Elements ===
+const els = {
+  firmLabel: document.getElementById("firm-label"),
+  roleLabel: document.getElementById("role-label"),
+  userLabel: document.getElementById("user-label"),
+  switchFirm: document.getElementById("switch-firm"),
+  logout: document.getElementById("logout"),
+  modal: document.getElementById("firm-modal"),
+  firmList: document.getElementById("firm-list"),
+  noFirm: document.getElementById("no-firm"),
+  closeModal: document.getElementById("close-modal"),
+  tileMA: document.getElementById("tile-ma"),
+  tileBand: document.getElementById("tile-band"),
+  tileView: document.getElementById("tile-view"),
+  goMA: document.getElementById("go-ma"),
+  goBand: document.getElementById("go-band"),
+  goView: document.getElementById("go-view"),
+};
+
+// === Auth ===
+async function ensureSession(){
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(!session){
+    alert("Nicht eingeloggt. Bitte in Tenra anmelden und Seite neu laden.");
+    return false;
+  }
+  state.session = session;
+  state.user = session.user;
+  els.userLabel.textContent = state.user.email || state.user.id;
+  return true;
+}
+
+// === Firmen ===
+async function loadFirms(){
+  const { data: rel } = await supabase
+    .from("firmen_user")
+    .select("firma_id, role, status")
+    .eq("user_id", state.user.id)
+    .eq("status", "accepted");
+  if(!rel?.length) return [];
+
+  const ids = [...new Set(rel.map(r => r.firma_id))];
+  const { data: firms } = await supabase
+    .from("firmen")
+    .select("id,name")
+    .in("id", ids);
+
+  const byId = Object.fromEntries((firms||[]).map(f => [String(f.id), f.name]));
+  state.firms = rel.map(r => ({
+    firma_id:String(r.firma_id),
+    role:r.role,
+    name:byId[String(r.firma_id)] || `Firma ${r.firma_id}`
+  }));
+  return state.firms;
+}
+
+function setCurrentFirm(firma_id, role){
+  state.currentFirmaId = String(firma_id);
+  state.currentRole = role;
+  localStorage.setItem("Tenra.currentFirmaId", state.currentFirmaId);
+  localStorage.setItem("Tenra.currentRole", state.currentRole);
+  renderFirmMeta();
+}
+function renderFirmMeta(){
+  const f = state.firms.find(x => x.firma_id === state.currentFirmaId);
+  els.firmLabel.textContent = "Firma: " + (f ? f.name : "–");
+  els.roleLabel.textContent = "Rolle: " + (state.currentRole || "–");
+}
+function openFirmChooser(){
+  els.firmList.innerHTML = "";
+  if(!state.firms.length){ els.noFirm.style.display="block"; }
+  else {
+    els.noFirm.style.display="none";
+    state.firms.forEach(f => {
+      const div=document.createElement("div");
+      div.className="firm-item";
+      div.innerHTML=`
+        <div>
+          <div style="font-weight:600">${f.name}</div>
+          <div class="muted">Rolle: ${f.role}</div>
+        </div>
+        <button>Auswählen</button>
+      `;
+      div.querySelector("button").onclick=()=>{ setCurrentFirm(f.firma_id,f.role); els.modal.close(); };
+      els.firmList.appendChild(div);
+    });
+  }
+  els.modal.showModal();
+}
+function go(path){
+  if(!state.currentFirmaId){ openFirmChooser(); return; }
+  window.location.href=`${path}?firma=${encodeURIComponent(state.currentFirmaId)}`;
+}
+
+// === Init ===
+(async ()=>{
+  if(!(await ensureSession())) return;
+  const firms = await loadFirms();
+  if(!firms.length){ renderFirmMeta(); openFirmChooser(); return; }
+
+  const stillValid = firms.some(f => f.firma_id===state.currentFirmaId);
+  if(!state.currentFirmaId || !stillValid){
+    const f = firms[0];
+    setCurrentFirm(f.firma_id,f.role);
+    openFirmChooser();
+  } else renderFirmMeta();
+})();
+
+// === Events ===
+els.logout.onclick=async()=>{ await supabase.auth.signOut(); localStorage.clear(); location.reload(); };
+els.switchFirm.onclick=openFirmChooser;
+els.closeModal.onclick=()=>els.modal.close();
+els.tileMA.onclick=()=>go("MA-Planung.html");
+els.tileBand.onclick=()=>go("Bandplanung.html");
+els.tileView.onclick=()=>go("MA-Ansicht.html");
+els.goMA.onclick=()=>go("MA-Planung.html");
+els.goBand.onclick=()=>go("Bandplanung.html");
+els.goView.onclick=()=>go("MA-Ansicht.html");
+</script>
+</body>
+</html>

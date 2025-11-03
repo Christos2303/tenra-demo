@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Controlling — Tenra</title>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    window.supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+  </script>
+
+  <style>
+    :root{
+      --bg:#eef1f6;
+      --txt:#0f1222;
+      --muted:#5f6b85;
+      --glass: rgba(255,255,255,0.6);
+      --glass-strong: rgba(255,255,255,0.72);
+      --stroke: rgba(15,18,34,0.08);
+      --blue:#007aff;
+      --green:#23c483;
+      --amber:#f59f00;
+      --shadow: 0 20px 60px rgba(16, 24, 40, 0.1);
+      --radius: 20px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      color:var(--txt); background:radial-gradient(1200px 800px at 10% -10%,#dfe6ff 0%,transparent 60%), radial-gradient(1200px 900px at 100% 0,#e7ffe7 0%,transparent 60%), var(--bg);
+    }
+
+    header.nav{
+      position:sticky;top:0;z-index:10;
+      display:flex;align-items:center;justify-content:space-between;
+      padding:16px 24px;
+      backdrop-filter:saturate(180%) blur(14px);
+      background:linear-gradient(180deg,rgba(255,255,255,0.7),rgba(255,255,255,0.45));
+      border-bottom:1px solid var(--stroke);
+    }
+    .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--txt);font-weight:700;}
+    .logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#7aa3ff,#6df0a6);}
+    .nav-right{display:flex;align-items:center;gap:12px}
+    .chip{padding:6px 10px;border-radius:999px;background:var(--glass-strong);border:1px solid var(--stroke);font-size:12px;color:var(--muted)}
+    .logout{border:1px solid var(--stroke);background:#fff;padding:8px 12px;border-radius:12px;cursor:pointer}
+    .logout:hover{background:#f7f8fb}
+
+    .container{max-width:1100px;margin:32px auto;padding:0 20px}
+    .section{margin-top:28px}
+    .section-title{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr);}
+    .app{
+      grid-column:span 4;min-height:150px;
+      display:flex;flex-direction:column;justify-content:space-between;
+      background:var(--glass);border:1px solid var(--stroke);border-radius:var(--radius);
+      padding:16px;box-shadow:var(--shadow);
+      cursor:pointer;transition:.25s transform,.25s box-shadow;
+      position:relative;
+    }
+    .app:hover{transform:translateY(-3px);box-shadow:0 24px 70px rgba(16,24,40,.14)}
+    .app .icon{
+      width:56px;height:56px;border-radius:16px;display:grid;place-items:center;
+      background:linear-gradient(135deg,#ffffff,#f5f8ff);border:1px solid var(--stroke);font-size:26px;
+    }
+    .app h3{margin:10px 0 4px;font-size:16px}
+    .app p{margin:0;color:var(--muted);font-size:13px}
+    .badge{position:absolute;right:12px;top:12px;padding:6px 8px;font-size:11px;border-radius:999px;background:#fff;border:1px solid var(--stroke);color:var(--muted)}
+    @media(max-width:1024px){.app{grid-column:span 6}}
+    @media(max-width:640px){.app{grid-column:span 12}}
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/app/dashboard.html">
+      <span class="logo-dot"></span><span class="brand-text">Tenra</span>
+    </a>
+    <div class="nav-right">
+      <span class="chip" id="userChip">…</span>
+      <button class="logout" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div>
+        <h2 class="hero-title">📊 Controlling</h2>
+        <p class="hero-sub">Zentrale Übersicht für Controlling-Funktionen</p>
+      </div>
+    </section>
+
+    <!-- MEMBER SECTION -->
+    <section class="section" id="memberSection" style="display:none">
+      <h3 class="section-title">Apps für dein Team</h3>
+      <div class="grid">
+        <article class="app" data-key="kassenbuch" data-href="/app/c_kassenbuch.html" style="display:none">
+
+          <div class="icon">💰</div>
+          <div>
+            <h3>Kassenbuch</h3>
+            <p>Gesamtkosten, Material</p>
+          </div>
+          <span class="badge">Core</span>
+        </article>
+
+        <article class="app" data-key="Betriebskosten" data-href="/app/c_betriebskosten.html" style="display:none">
+          <div class="icon">📈</div>
+          <div>
+            <h3>Betriebskostenabrechnung</h3>
+            <p>KPI-Auswertungen & Trends</p>
+          </div>
+        </article>
+
+        <article class="app" data-key="mitarbeiter_effizienz" data-href="/app/c_mitarbeiterleistung.html" style="display:none">
+          <div class="icon">👷‍♂️</div>
+          <div>
+            <h3>Mitarbeiterleistung</h3>
+            <p>Schicht- & Linienstatistik</p>
+          </div>
+        </article>
+
+        <article class="app" data-key="export_dashboard" data-href="/app/c_export.html" style="display:none">
+          <div class="icon">📤</div>
+          <div>
+            <h3>Export & Berichte</h3>
+            <p>Datenausgabe & Report-Tools</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/dashboard.html">
+          <div class="icon">⬅️</div>
+          <div>
+            <h3>Zurück zum Dashboard</h3>
+            <p>Zur Hauptübersicht</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ADMIN SECTION -->
+    <section class="section" id="adminSection" style="display:none">
+      <h3 class="section-title">Admin & Einstellungen</h3>
+      <div class="grid">
+        <article class="app" data-href="/app/c_katalog.html">
+          <div class="icon">🧩</div>
+          <div>
+            <h3>Controlling-Katalog</h3>
+            <p>Module aktivieren/deaktivieren</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/c_einstellungen.html">
+          <div class="icon">⚙️</div>
+          <div>
+            <h3>Einstellungen</h3>
+            <p>Struktur, Freigaben & Rechte</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/teamverwaltung.html">
+          <div class="icon">👥</div>
+          <div>
+            <h3>Teamverwaltung</h3>
+            <p>Rollen ändern & Mitglieder verwalten</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    const userChip = document.getElementById("userChip");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const memberSection = document.getElementById("memberSection");
+    const adminSection = document.getElementById("adminSection");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log("🔹 Eingeloggt:", user?.email, "ID:", user?.id);
+
+    if (user) userChip.textContent = user.email || "Eingeloggt";
+
+    logoutBtn.addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/index.html";
+    });
+
+   // Rolle und Firma laden
+let { data: memberships, error: memErr } = await supabase
+  .from("firmen_user")
+  .select("firma_id, role, status")
+  .eq("user_id", user?.id ?? "")
+  .eq("status", "accepted");
+
+if (memErr) console.error("Fehler beim Laden der Firmen:", memErr);
+
+if (!memberships || memberships.length === 0) {
+  alert("⚠️ Keine gültige Firmen-Zugehörigkeit gefunden. Bitte im Katalog zuweisen.");
+} else {
+  // Falls mehrere Firmen – nimm die erste (oder später Auswahlmenü)
+  const membership = memberships[0];
+  const role = membership.role?.toLowerCase() || "member";
+  const firmaId = membership.firma_id;
+
+  memberSection.style.display = "block";
+  if (role === "owner" || role === "admin") adminSection.style.display = "block";
+
+  // Module für diese Firma laden
+  const { data: modules, error: modErr } = await supabase
+    .from("controlling_module")
+    .select("modul_key, aktiviert")
+    .eq("firma_id", firmaId);
+
+    if (modErr) console.error("Fehler beim Laden der Module:", modErr);
+if (!modules || modules.length === 0) {
+  console.warn("⚠️ Keine Module für Firma gefunden:", firmaId);
+} else {
+  console.table(modules);
+}
+
+
+  if (modErr) console.error("Fehler beim Laden der Module:", modErr);
+
+  console.log("Firma:", firmaId, "Module:", modules); // 🔍 Debug-Ausgabe
+
+  modules?.forEach(mod => {
+  const key = mod.modul_key?.trim().toLowerCase();
+  const el = document.querySelector(`.app[data-key='${key}']`);
+  console.log("🔸 Prüfe Modul:", key, "→ aktiviert:", mod.aktiviert, "→ Element:", !!el);
+  if (el && mod.aktiviert) el.style.display = "flex";
+});
+
+}
+
+    // Navigation
+    document.querySelectorAll(".app").forEach(el=>{
+      el.addEventListener("click",()=>{
+        const href = el.dataset.href;
+        if(href) window.location.href = href;
+      });
+    });
+  </script>
+</body>
+</html>

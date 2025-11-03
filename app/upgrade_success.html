@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra — Upgrade erfolgreich</title>
+  <meta name="color-scheme" content="dark light" />
+  <style>
+    :root {
+      --bg: radial-gradient(1200px 800px at 20% 0%, #0f1115 0%, #0b0d10 45%, #07080b 100%);
+      --glass: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --text: #f2f5f7;
+      --muted: #a0a8b2;
+      --accent: #0a84ff;
+      --success: #27c96c;
+      --radius: 22px;
+      --blur: blur(20px) saturate(160%);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    .container {
+      text-align: center;
+      background: var(--glass);
+      backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 50px 60px;
+      box-shadow: 0 0 60px rgba(0, 0, 0, 0.4);
+      animation: fadeIn 0.8s ease forwards;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 0.8rem;
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .btn {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      padding: 14px 34px;
+      border-radius: var(--radius);
+      transition: 0.25s ease;
+      letter-spacing: 0.3px;
+      box-shadow: 0 0 25px rgba(0, 168, 255, 0.35);
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 40px rgba(0, 168, 255, 0.45);
+    }
+
+    .emoji {
+      font-size: 3rem;
+      display: inline-block;
+      animation: bounce 1.6s ease-in-out infinite;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🎉</div>
+    <h1>Upgrade erfolgreich!</h1>
+    <p>Dein Firmenbereich wird gerade freigeschaltet.<br>Das dauert nur wenige Sekunden.</p>
+    <a class="btn" href="/app/dashboard.html">Zum Dashboard</a>
+  </div>
+</body>
+</html>

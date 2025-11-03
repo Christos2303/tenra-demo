@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tenra – Mitarbeiteransicht</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+:root{
+  --bg: radial-gradient(1200px 800px at 20% 0%, #0f1115 0%, #0b0d10 45%, #07080b 100%);
+  --panel: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.1);
+  --text: #f3f6fa;
+  --muted: #a0a8b2;
+  --accent: #007aff;
+  --radius: 20px;
+  --glass-blur: blur(18px) saturate(140%);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-size:16px;
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+}
+
+header{
+  position:sticky;top:0;
+  background:rgba(255,255,255,0.05);
+  backdrop-filter:var(--glass-blur);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;}
+.logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#007aff,#00c6ff)}
+
+main{flex:1;max-width:1100px;margin:30px auto;padding:0 24px;display:grid;gap:20px;width:100%}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  background:rgba(255,255,255,0.06);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:8px 14px;                /* 👈 weniger Padding */
+  min-height:50px;                 /* 👈 flacher */
+  backdrop-filter:var(--glass-blur);
+  margin-bottom:8px;               /* 👈 enger zur Tabelle */
+}
+
+select{
+  font:inherit;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.1);
+  color:var(--text);
+  padding:8px 10px;
+  outline:none;
+}
+select option{color:#000}
+h2{margin:0;font-size:20px;color:var(--accent)}
+
+.shift-chips{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.chip{
+  user-select:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 14px;border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.06);
+  color:var(--text);
+  font-weight:600; letter-spacing:.2px;
+  cursor:pointer;
+  transition:.15s transform ease, .15s background ease;
+}
+.chip:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.1); }
+.chip.active{ background:#fff; color:#111; border-color:transparent; }
+
+.table-box{
+  background:rgba(255,255,255,0.05);
+    min-height:480px;                /* 👈 Tabelle dominiert visuell */
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  backdrop-filter:var(--glass-blur);
+  box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  text-align:left;
+}
+th,td{
+  padding:14px 18px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  font-size:18px;
+}
+th{color:var(--muted);font-weight:600;}
+td.name{font-weight:700;font-size:20px}
+td.code{
+  text-align:center;
+  font-weight:700;
+  font-size:22px;
+  letter-spacing:0.5px;
+  border-left:1px solid rgba(255,255,255,0.05);
+  width:120px;
+}
+td.comment{color:#cbd3de;font-size:15px;}
+tr:hover{background:rgba(255,255,255,0.06);}
+footer{padding:16px;text-align:center;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo-dot"></span><span>Tenra – Mitarbeiter</span></div>
+  <span id="today"></span>
+</header>
+
+<main>
+  <section class="controls">
+    <label>Abteilung:</label>
+    <select id="selAbt"></select>
+
+    <div id="shiftWrap" style="display:flex;gap:12px;align-items:center;margin-left:auto;flex-wrap:wrap;">
+      <span style="color:var(--muted);font-size:14px;">Schichtgruppe:</span>
+      <div id="shiftChips" class="shift-chips" aria-label="Schichtgruppen"></div>
+    </div>
+  </section>
+
+  <section class="table-box">
+    <table id="maTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Abteilung</th>
+          <th>Schicht</th>
+          <th>Code</th>
+          <th>Kommentar</th>
+        </tr>
+      </thead>
+      <tbody id="maBody">
+        <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px;">Lade Daten…</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+
+<footer>© Tenra Plattform</footer>
+
+<script type="module">
+/* ✅ WICHTIG: Supabase-Client importieren */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/* ===== Supabase Setup ===== */
+const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===== State ===== */
+const state = {
+  session:null,user:null,
+  firma_id: localStorage.getItem("Tenra.currentFirmaId"),
+  abteilungen:[],
+  abteilung_id:null,
+  shiftGroups:[],   // [{code,label}]
+  shiftGroup:null,  // aktuell ausgewählt (code) oder null = alle
+  legend:{},
+  employees:[],
+  entries:[],
+  today:new Date()
+};
+
+/* ===== Elemente ===== */
+const els = {
+  today: document.getElementById("today"),
+  selAbt: document.getElementById("selAbt"),
+  shiftWrap: document.getElementById("shiftWrap"),
+  shiftChips: document.getElementById("shiftChips"),
+  maBody: document.getElementById("maBody")
+};
+els.today.textContent = state.today.toLocaleDateString("de-DE",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+
+/* ===== Bootstrap ===== */
+(async function init(){
+  /* Session */
+  const { data:{session} } = await supabase.auth.getSession();
+  if(!session){ alert("Bitte zuerst anmelden."); location.href="Planner.html"; return; }
+  state.session=session; state.user=session.user;
+
+  /* Firmen-Rolle prüfen: nur member */
+  const { data: rel, error } = await supabase
+    .from("firmen_user")
+    .select("role,status")
+    .eq("user_id", state.user.id)
+    .eq("firma_id", state.firma_id)
+    .maybeSingle();
+  if(error){ console.error(error); alert("Zugriff konnte nicht geprüft werden."); location.href="Planner.html"; return; }
+  if(!rel || rel.status!=="accepted"){ alert("Kein aktiver Firmenzugang."); location.href="Planner.html"; return; }
+ if(rel.role!=="member"){
+  const warn = document.createElement("div");
+  warn.textContent = "👁️ Hinweis: Sie sehen die Mitarbeiteransicht (Lesemodus).";
+  warn.style.cssText = `
+    background:rgba(255,255,255,0.08);
+    border-bottom:1px solid rgba(255,255,255,0.15);
+    text-align:center;
+    color:#a0a8b2;
+    font-size:14px;
+    padding:8px;
+  `;
+  document.body.insertBefore(warn, document.body.firstChild);
+}
+
+
+  await loadAbteilungen();
+  await loadShiftGroups();  // füllt Kachel-Leiste
+  await loadLegend();
+  await loadEmployees();
+  await loadEntries();
+  renderTable();
+
+  /* Events */
+  els.selAbt.onchange = async()=>{
+    state.abteilung_id = els.selAbt.value || null;
+    await loadEmployees(); await loadEntries(); renderTable();
+  };
+})();
+
+/* ===== Loader ===== */
+async function loadAbteilungen(){
+  const { data, error } = await supabase
+    .from("abteilungen")
+    .select("id,name")
+    .eq("firma_id", state.firma_id)
+    .order("name");
+  if(error){ console.error(error); }
+  state.abteilungen=data||[];
+
+  els.selAbt.innerHTML = `<option value="">(alle)</option>` + 
+    state.abteilungen.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+
+  // kleine UX: wenn es genau eine Abteilung gibt → auto-selektieren
+  if(state.abteilungen.length===1){
+    state.abteilung_id = state.abteilungen[0].id;
+    els.selAbt.value = state.abteilung_id;
+  }
+}
+
+async function loadShiftGroups(){
+  const { data, error } = await supabase
+    .from("planner_shifts")
+    .select("code,label")
+    .eq("firma_id", state.firma_id)
+    .eq("is_active", true)
+    .order("label",{ascending:true});
+  if(error){ console.error(error); }
+  state.shiftGroups = data || [];
+
+  // UI bauen (Kacheln)
+  els.shiftChips.innerHTML = "";
+  if(!state.shiftGroups.length){
+    // Keine Schichtgruppen → Leiste ausblenden
+    els.shiftWrap.style.display = "none";
+    state.shiftGroup = null;
+    return;
+  } else {
+    els.shiftWrap.style.display = "flex";
+  }
+
+  // "(Alle)"-Chip
+  const all = document.createElement("div");
+  all.className = "chip active";
+  all.textContent = "Alle";
+  all.dataset.value = "";
+  all.onclick = ()=> selectShiftChip("");
+  els.shiftChips.appendChild(all);
+
+  // einzelne Gruppen
+  for(const s of state.shiftGroups){
+    const c = document.createElement("div");
+    c.className = "chip";
+    c.textContent = s.label || s.code;
+    c.title = s.code;
+    c.dataset.value = s.code;
+    c.onclick = ()=> selectShiftChip(s.code);
+    els.shiftChips.appendChild(c);
+  }
+}
+
+async function loadLegend(){
+  const { data, error } = await supabase
+    .from("planner_legend")
+    .select("code,label,color")
+    .eq("firma_id", state.firma_id);
+  if(error){ console.error(error); }
+  state.legend={};
+  (data||[]).forEach(r=>state.legend[r.code]={label:r.label,color:r.color});
+}
+
+async function loadEmployees(){
+  let q=supabase.from("planner_employees")
+    .select("id,display_name,abteilung_id,shift_group,active")
+    .eq("firma_id",state.firma_id)
+    .eq("active",true);
+  if(state.abteilung_id) q = q.eq("abteilung_id",state.abteilung_id);
+  if(state.shiftGroup)   q = q.eq("shift_group",state.shiftGroup);
+  const { data, error } = await q;
+  if(error){ console.error(error); }
+  state.employees=data||[];
+}
+
+async function loadEntries() {
+  const today = state.today.getDate();
+  const month = state.today.getMonth() + 1;
+  const year = state.today.getFullYear();
+
+let query = supabase
+  .from("planner_sheets")
+  .select("id")
+  .eq("firma_id", state.firma_id)
+  .eq("year", year)
+  .eq("month", month);
+
+if (state.abteilung_id)
+  query = query.eq("abteilung_id", state.abteilung_id);
+else
+  query = query.is("abteilung_id", null);
+
+const { data: sheet, error: sErr } = await query.maybeSingle();
+
+  if (sErr) { console.error(sErr); }
+  if (!sheet) { state.entries = []; return; }
+
+  // 🧩 Nur Einträge vom heutigen Tag holen
+  const { data, error } = await supabase
+    .from("planner_entries")
+    .select("employee_id, day, code, note, color")
+    .eq("sheet_id", sheet.id)
+    .eq("day", today); // <– genau hier das Wichtige!
+
+  if (error) { console.error(error); }
+  state.entries = data || [];
+}
+
+
+/* ===== Interactions ===== */
+async function selectShiftChip(value){
+  // active-Style umschalten
+  document.querySelectorAll(".chip").forEach(ch=>{
+    ch.classList.toggle("active", ch.dataset.value===value);
+    if(value==="" && ch.dataset.value==="") ch.classList.add("active");
+  });
+
+  state.shiftGroup = value || null;
+  await loadEmployees();
+  await loadEntries();
+  renderTable();
+}
+
+/* ===== Render ===== */
+function renderTable(){
+  const tbody = els.maBody;
+  tbody.innerHTML="";
+  if(!state.employees.length){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px;">Keine Mitarbeiter gefunden.</td></tr>`;
+    return;
+  }
+  const todayEntries = new Map(state.entries.map(e=>[e.employee_id,e]));
+
+  for(const emp of state.employees){
+    const e=todayEntries.get(emp.id);
+    const code=e?.code||"";
+    const note=e?.note||"";
+    const color=e?.color||state.legend[code]?.color||"rgba(255,255,255,0.06)";
+    const abt=state.abteilungen.find(a=>a.id===emp.abteilung_id)?.name||"–";
+
+    const row=document.createElement("tr");
+    row.innerHTML=`
+      <td class="name">${emp.display_name}</td>
+      <td>${abt}</td>
+      <td>${emp.shift_group||"–"}</td>
+      <td class="code" style="background:${color};color:#000;">${code}</td>
+      <td class="comment">${note}</td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+</script>
+</body>
+</html>

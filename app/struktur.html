@@ -1,0 +1,488 @@
+<!doctype html>
+
+<html lang="de">
+    
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra — Struktur & Schichten</title>
+
+  
+  <style>
+
+input[type="time"]{border:1px solid var(--stroke);border-radius:8px;padding:4px 6px;}
+input{font:inherit;}
+select{font:inherit;}
+
+
+    dialog::backdrop { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+
+    :root{
+      --bg:#f4f6fb; --txt:#0e111e; --muted:#6d7690; --accent:#007aff;
+      --glass:rgba(255,255,255,0.7); --stroke:rgba(15,18,34,0.08);
+      --radius:18px; --shadow:0 18px 60px rgba(0,0,0,0.06);
+    }
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg); color:var(--txt);
+    }
+    header{
+      position:sticky; top:0; background:var(--glass);
+      backdrop-filter:blur(12px); border-bottom:1px solid var(--stroke);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 22px; z-index:10;
+    }
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;text-decoration:none;color:var(--txt);}
+    .logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#7aa3ff,#6df0a6);}
+    main{max-width:1100px;margin:36px auto;padding:0 20px}
+    .panel{background:#fff;border:1px solid var(--stroke);border-radius:var(--radius);
+      box-shadow:var(--shadow);padding:20px;margin-bottom:22px}
+    h1{margin:0 0 8px;font-size:22px}
+    h2{margin:0 0 12px;font-size:16px}
+    .muted{color:var(--muted);font-size:13px}
+    .row{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+    input,select,button{font:inherit;border-radius:12px;border:1px solid var(--stroke);padding:8px 10px}
+    button{background:var(--accent);color:#fff;border:none;cursor:pointer}
+    button.ghost{background:#f8f9fc;color:var(--txt)}
+    .list .card{background:#f9fafe;border:1px solid var(--stroke);border-radius:14px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+    .badge{background:#eef1f6;border-radius:999px;padding:3px 8px;font-size:11px;color:var(--muted)}
+    details{margin-top:8px}
+    pre{background:#0f1117;color:#dfe4ff;padding:12px;border-radius:10px;font-size:12px;overflow:auto}
+  </style>
+</head>
+
+<body>
+    
+<header>
+  <a class="brand" href="/dashboard.html">
+    <span class="logo-dot"></span><span>Tenra</span>
+  </a>
+  <span id="userEmail" class="muted">–</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h1>Struktur & Schichten</h1>
+    <p class="muted">Definiere Firmenstruktur und Schichtzeiten für deine Firma.</p>
+  </section>
+
+  <section class="panel" id="firmSection">
+    <h2>Firma wählen</h2>
+    <div class="row">
+      <select id="selFirma"></select>
+      <button id="btnReload">Neu laden</button>
+    </div>
+    <p class="muted">Nur Firmen, in denen du Mitglied bist (Status „accepted“).</p>
+  </section>
+
+  <section class="panel" id="abtSection" style="display:none">
+    <h2>Abteilungen</h2>
+    <div class="row">
+      <input id="inpAbt" placeholder="Neue Abteilung z. B. Produktion PV" />
+      <button id="btnAddAbt">Hinzufügen</button>
+    </div>
+    <div id="abtList" class="list"></div>
+  </section>
+
+  <section class="panel" id="linSection" style="display:none">
+    <h2>Linien</h2>
+    <div class="row">
+      <input id="inpLin" placeholder="Neue Linie z. B. 222" />
+      <select id="selAbt"></select>
+      <button id="btnAddLin">Hinzufügen</button>
+    </div>
+    <div id="linList" class="list"></div>
+  </section>
+
+  <!-- 🕒 Schichtpläne -->
+  <section class="panel" id="planSection" style="display:none">
+    <h2>Schichtpläne</h2>
+    <p class="muted">Definiere Schichten für Firma, Abteilungen oder Linien. Linien vererben automatisch von Abteilung → Firma.</p>
+
+    <div class="row">
+      <select id="planScope">
+        <option value="firma">Firma</option>
+        <option value="abteilung">Abteilung</option>
+        <option value="linie">Linie</option>
+      </select>
+      <select id="planTarget"></select>
+      <button id="btnEditPlan">Bearbeiten</button>
+    </div>
+
+    <div id="planPreview" style="margin-top:16px"></div>
+  </section>
+
+  <!-- Dialog Editor -->
+  <dialog id="dlgPlan" style="border:none;border-radius:16px;padding:0;max-width:950px;width:95%;background:#fff;color:#0e111e;">
+  <form method="dialog" style="margin:0;padding:24px">
+    <h3 id="dlgTitle" style="margin-top:0">Schichtplan bearbeiten</h3>
+
+    <div class="row" style="margin-bottom:16px">
+      <label for="planMode"><b>Betriebsart:</b></label>
+      <select id="planMode">
+        <option value="multi">Mehrschicht (FS / SS / NS)</option>
+        <option value="single">Ein-Schicht (9–17 Uhr)</option>
+      </select>
+    </div>
+
+    <div id="dayGrid" style="display:grid;gap:16px;margin-top:10px"></div>
+
+    <div style="margin-top:22px;display:flex;gap:10px;justify-content:flex-end">
+      <button value="close" class="ghost">Abbrechen</button>
+      <button type="button" id="btnSavePlan">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+
+</main>
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+<script>
+import("https://esm.sh/@supabase/supabase-js@2").then(({ createClient }) => {
+
+  // === Supabase Setup ===
+  const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  window.supabase = supabase; // 🔥 macht es global für Konsole und andere Skripte
+
+
+ // ✅ Um die Session sauber zu prüfen:
+async function checkSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log("AUTH USER:", session?.user?.id);
+
+  if (!session?.user) {
+    console.warn("⚠️ Kein Benutzer eingeloggt — RLS blockiert alles!");
+    alert("Bitte erneut einloggen, keine gültige Session gefunden!");
+  }
+}
+
+checkSession();
+
+
+
+
+  // === DOM Elements ===
+  const els = {
+    userEmail: document.getElementById("userEmail"),
+    selFirma: document.getElementById("selFirma"),
+    btnReload: document.getElementById("btnReload"),
+    abtSection: document.getElementById("abtSection"),
+    linSection: document.getElementById("linSection"),
+    inpAbt: document.getElementById("inpAbt"),
+    btnAddAbt: document.getElementById("btnAddAbt"),
+    abtList: document.getElementById("abtList"),
+    inpLin: document.getElementById("inpLin"),
+    selAbt: document.getElementById("selAbt"),
+    btnAddLin: document.getElementById("btnAddLin"),
+    linList: document.getElementById("linList")
+  };
+
+  const state = { user:null, firma:null, abteilungen:[], linien:[] };
+
+  // === Auth ===
+  (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session){ alert("Nicht eingeloggt"); location.href="/index.html"; return; }
+    state.user = session.user;
+    els.userEmail.textContent = state.user.email;
+    // ✅ Rolle prüfen (nur owner/admin erlaubt)
+const { data: roleData } = await supabase
+  .from("firmen_user")
+  .select("role, status")
+  .eq("user_id", session.user.id)
+  .eq("status", "accepted")
+  .maybeSingle();
+
+if (!roleData || !["owner", "admin"].includes(roleData.role)) {
+  alert("⛔ Kein Zugriff – nur Admins und Owner dürfen diese Seite verwenden!");
+  window.location.href = "/app/dashboard.html";
+  return;
+}
+
+    await loadFirms();
+  })();
+
+  // === Firmen laden ===
+  async function loadFirms(){
+    const { data, error } = await supabase
+      .from("firmen_user")
+      .select("firma_id, role, status, firmen:firmen(id,name)")
+      .eq("user_id", state.user.id)
+      .eq("status","accepted");
+    if(error){ alert(error.message); return; }
+    els.selFirma.innerHTML = data.map(f=>`<option value="${f.firmen.id}">${f.firmen.name} (${f.role})</option>`).join("");
+    if(data.length){ setFirma(data[0].firmen.id); }
+  }
+
+  els.btnReload.onclick = ()=>loadFirms();
+  els.selFirma.onchange = ()=>setFirma(els.selFirma.value);
+
+  async function setFirma(id){
+    state.firma=id;
+    els.abtSection.style.display="block";
+    els.linSection.style.display="block";
+    $("#planSection").show();
+    await refreshAll();
+  }
+
+  async function refreshAll(){
+    await loadAbt();
+    await loadLin();
+    await refreshPlanTargets();
+  }
+
+  // === Abteilungen ===
+  async function loadAbt(){
+    const { data, error } = await supabase.from("abteilungen").select("*").eq("firma_id",state.firma);
+    if(error){ alert(error.message); return; }
+    state.abteilungen=data;
+    els.abtList.innerHTML = data.map(a=>`
+      <div class="card">
+        <div>${a.name}</div>
+        <div>
+          <button class="ghost" onclick="renameAbt('${a.id}','${a.name}')">✏️</button>
+          <button class="ghost" onclick="delAbt('${a.id}')">🗑️</button>
+        </div>
+      </div>`).join("") || '<p class="muted">Keine Abteilungen</p>';
+    els.selAbt.innerHTML='<option value="">(ohne)</option>'+data.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+  }
+
+  window.renameAbt = async (id,old)=>{
+    const n=prompt("Neuer Name",old); if(!n) return;
+    await supabase.from("abteilungen").update({name:n}).eq("id",id);
+    loadAbt();
+  };
+  window.delAbt = async (id)=>{
+    if(confirm("Löschen?")){ await supabase.from("abteilungen").delete().eq("id",id); loadAbt(); }
+  };
+
+  els.btnAddAbt.onclick=async()=>{
+    const name=els.inpAbt.value.trim(); if(!name)return;
+    await supabase.from("abteilungen").insert({firma_id:state.firma,name,created_by:state.user.id});
+    els.inpAbt.value=""; loadAbt();
+  };
+
+  // === Linien ===
+  async function loadLin(){
+    const { data, error } = await supabase.from("linien").select("*").eq("firma_id",state.firma);
+    if(error){ alert(error.message); return; }
+    state.linien=data;
+    els.linList.innerHTML=data.map(l=>{
+      const abt=state.abteilungen.find(a=>a.id===l.abteilung_id);
+      return `<div class="card">
+        <div>${l.name} <span class="badge">${abt?abt.name:"ohne Abteilung"}</span></div>
+        <div>
+          <button class="ghost" onclick="renameLin('${l.id}','${l.name}')">✏️</button>
+          <button class="ghost" onclick="delLin('${l.id}')">🗑️</button>
+        </div>
+      </div>`;
+    }).join("") || '<p class="muted">Keine Linien</p>';
+  }
+
+  window.renameLin = async (id,old)=>{
+    const n=prompt("Neuer Name",old); if(!n)return;
+    await supabase.from("linien").update({name:n}).eq("id",id);
+    loadLin();
+  };
+  window.delLin = async (id)=>{
+    if(confirm("Löschen?")){ await supabase.from("linien").delete().eq("id",id); loadLin(); }
+  };
+  els.btnAddLin.onclick=async()=>{
+    const name=els.inpLin.value.trim(); if(!name)return;
+    const abt=els.selAbt.value||null;
+    await supabase.from("linien").insert({firma_id:state.firma,abteilung_id:abt,name,created_by:state.user.id});
+    els.inpLin.value=""; loadLin();
+  };
+
+  // === Schichtpläne ===
+  const elsPlan = {
+    section: $("#planSection"),
+    scope: $("#planScope"),
+    target: $("#planTarget"),
+    btnEdit: $("#btnEditPlan"),
+    preview: $("#planPreview"),
+    dlg: $("#dlgPlan"),
+    dlgTitle: $("#dlgTitle"),
+    dayGrid: $("#dayGrid"),
+    mode: $("#planMode"),
+    btnSave: $("#btnSavePlan")
+  };
+
+  const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const LABEL = {Mon:"Mo",Tue:"Di",Wed:"Mi",Thu:"Do",Fri:"Fr",Sat:"Sa",Sun:"So"};
+
+  function emptySchedule(){return Object.fromEntries(DAYS.map(d=>[d,[]]));}
+
+  elsPlan.scope.on("change", refreshPlanTargets);
+ elsPlan.btnEdit.on("click", async ()=>{
+  const scope = elsPlan.scope.val();
+  const id = elsPlan.target.val() || elsPlan.target.find("option:selected").val(); // Fix hier ✅
+  
+  // 🧠 Fallback: wenn kein Target, aber Firma gewählt → nimm state.firma
+  const realId = id || state.firma;
+  
+  if(!realId) return alert("Bitte Ziel auswählen.");
+  const name = elsPlan.target.find("option:selected").text() || "Gesamte Firma";
+  await openPlanEditor(scope, realId, name);
+});
+
+  elsPlan.target.on("change", refreshPlanPreview);
+
+  
+
+  async function refreshPlanTargets(){
+    const s = elsPlan.scope.val();
+    let options = [];
+    if(s === "firma") options = [{ id: String(state.firma), name: "Gesamte Firma" }];
+    else if(s === "abteilung") options = state.abteilungen.map(a=>({id:a.id,name:a.name}));
+    else if(s === "linie") options = state.linien.map(l=>({id:l.id,name:l.name}));
+
+    elsPlan.target.html(options.map(o=>`<option value="${o.id}">${o.name}</option>`).join(""));
+    if(!options.length) elsPlan.target.html('<option value="">Keine Einträge</option>');
+    refreshPlanPreview();
+    if(options.length > 0) {
+  elsPlan.target.val(options[0].id);
+}
+
+  }
+
+  async function getPlan(scope,scope_id){
+    const {data,error}=await supabase.from("schichtplaene")
+      .select("id,schedule")
+      .eq("firma_id",state.firma)
+      .eq("scope",scope)
+      .eq("scope_id",scope_id)
+      .eq("active",true)
+      .maybeSingle();
+    if(error){console.error(error);return null;}
+    return data;
+  }
+
+  async function refreshPlanPreview(){
+    const scope = elsPlan.scope.val();
+    const id = elsPlan.target.val();
+    if(!id){ elsPlan.preview.html("<p class='muted'>Kein Ziel ausgewählt.</p>"); return; }
+    const plan = await getPlan(scope,id);
+    if(!plan){ elsPlan.preview.html("<p class='muted'>Kein Plan gespeichert.</p>"); return; }
+    elsPlan.preview.html(renderPreview(plan.schedule));
+  }
+
+  function renderPreview(sch){
+    return DAYS.map(d=>{
+      const intervals=sch?.[d]||[];
+      const txt=intervals.map(i=>`${i.name??""} ${i.start}–${i.end}`).join(", ");
+      return `<div style="margin-bottom:4px"><b>${LABEL[d]}:</b> ${txt||"<span class='muted'>frei</span>"}</div>`;
+    }).join("");
+  }
+
+  async function openPlanEditor(scope,scope_id,name){
+    const existing = await getPlan(scope,scope_id);
+    const schedule = existing?.schedule || emptySchedule();
+    elsPlan.dlgTitle.text(`Schichtplan – ${name}`);
+    renderEditor(schedule);
+    document.getElementById("dlgPlan").showModal();
+
+    elsPlan.btnSave.off("click").on("click",()=>savePlan(scope,scope_id));
+  }
+
+  function renderEditor(sch){
+    elsPlan.dayGrid.empty();
+    const mode=elsPlan.mode.val();
+    for(const d of DAYS){
+      const wrap=$(`<div><div style='font-weight:600;margin-bottom:4px'>${LABEL[d]}</div></div>`);
+      const box=$("<div class='intervals'></div>");
+      if(mode==="multi"){
+        const presets=[
+          {name:"FS",start:"06:00",end:"14:30"},
+          {name:"SS",start:"14:30",end:"23:00"},
+          {name:"NS",start:"23:00",end:"06:00"}
+        ];
+        presets.forEach(p=>box.append(intervalRow(d,p.name,p.start,p.end)));
+      } else {
+        box.append(intervalRow(d,"Tag","09:00","17:00"));
+      }
+      wrap.append(box);
+      elsPlan.dayGrid.append(wrap);
+    }
+  }
+
+  function intervalRow(day,name,start,end){
+  const row = $("<div style='display:flex;gap:6px;margin-bottom:6px;align-items:center'></div>");
+  const nameInput = $(`<input style='width:50px;text-align:center' value='${name}'>`);
+  const startInput = $(`<input type='time' value='${start}'>`);
+  const endInput = $(`<input type='time' value='${end}'>`);
+  
+  // 🗑️ Entfernen-Button
+  const delBtn = $("<button type='button' class='ghost' style='background:#eee;color:#333;padding:4px 8px;border-radius:6px;'>–</button>");
+  delBtn.on("click", () => row.remove());
+
+  row.append(nameInput, startInput, endInput, delBtn);
+  return row;
+}
+
+
+  function collectSchedule() {
+  const result = {};
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  $("#dayGrid > div").each(function(i) {
+    const intervals = [];
+
+    // 🔍 Alle Schicht-Zeilen pro Tag sauber auslesen
+    $(this).find(".intervals > div").each(function() {
+      const inputs = $(this).find("input");
+      if (inputs.length === 3) {
+        const name = inputs.eq(0).val().trim();
+        const start = inputs.eq(1).val();
+        const end = inputs.eq(2).val();
+        if (name && start && end) {
+          intervals.push({ name, start, end });
+        }
+      }
+    });
+
+    result[days[i]] = intervals;
+  });
+
+  console.log("💾 Gesammelter Plan:", result);
+  return result;
+}
+
+
+  async function savePlan(scope,scope_id){
+    const schedule=collectSchedule();
+    await supabase.from("schichtplaene").delete().match({
+      firma_id:state.firma,
+      scope,
+      scope_id,
+      active:true
+    });
+    const {error}=await supabase.from("schichtplaene").insert({
+      firma_id:state.firma,
+      scope,
+      scope_id,
+      schedule,
+      active:true,
+      created_by:state.user.id
+    });
+    if(error){ alert(error.message); return; }
+    const dlg = document.getElementById("dlgPlan");
+if (dlg && typeof dlg.close === "function") dlg.close();
+
+
+    refreshPlanPreview();
+    alert("✅ Schichtplan gespeichert");
+    // 🧭 Signal an Schichtbuch senden, dass sich etwas geändert hat
+localStorage.setItem("refreshSchichtbuch", "true");
+
+
+  }
+
+}); // 👈 schließt import().then()
+</script>
+
+</body>
+</html>

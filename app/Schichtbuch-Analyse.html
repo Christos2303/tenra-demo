@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra — Schichtbuch Analyse</title>
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // =========================
+    // ⚙️ CONFIG + STATE
+    // =========================
+    const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const state = {
+      session: null,
+      user: null,
+      roleForFirma: null,
+      currentFirmaId: null,
+      firmen: [],
+      abteilungen: [],
+      linien: [],
+      selectedAbtId: null,
+      selectedLinieId: null,
+    };
+
+    const els = {};
+
+    // =========================
+    // 🔐 SESSION
+    // =========================
+    async function ensureSession() {
+      if (state.session && state.user) return true;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        state.session = session;
+        state.user = session.user;
+        return true;
+      }
+      alert("❌ Keine aktive Sitzung — bitte neu einloggen!");
+      return false;
+    }
+
+    // =========================
+    // 🚀 INIT
+    // =========================
+    async function init() {
+      Object.assign(els, {
+        btnBack: document.querySelector("[data-nav='back']"),
+        btnSchichtbuch: document.querySelector("[data-nav='sb']"),
+        btnAnalyse: document.querySelector("[data-nav='ana']"),
+        btnSettings: document.querySelector("[data-nav='set']"),
+        firmaSelect: document.getElementById("firmaSelect"),
+        abtSelect: document.getElementById("abtSelect"),
+        linieSelect: document.getElementById("linieSelect"),
+        anaCards: document.getElementById("anaCards"),
+      });
+
+      // 🧭 Navigation
+      els.btnSchichtbuch.addEventListener("click", () => {
+        document.body.style.opacity = "0";
+        setTimeout(() => (window.location.href = "Schichtbuch.html"), 350);
+      });
+      els.btnAnalyse.addEventListener("click", e => e.preventDefault());
+      els.btnBack.addEventListener("click", () => history.back());
+
+      // 🧠 Auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user) {
+        state.session = session;
+        state.user = session.user;
+        startApp();
+      } else {
+        supabase.auth.onAuthStateChange((_event, session) => {
+          if (session && session.user) {
+            state.session = session;
+            state.user = session.user;
+            startApp();
+          }
+        });
+      }
+    }
+
+    // =========================
+    // 🏢 FIRMEN + ROLLEN
+    // =========================
+    async function startApp() {
+      console.log("✅ Angemeldet als:", state.user.email);
+
+      const { data: fuser, error } = await supabase
+        .from("firmen_user")
+        .select("firma_id, role, status, firmen ( id, name )")
+        .eq("user_id", state.user.id)
+        .eq("status", "accepted");
+
+      if (error || !fuser?.length) {
+        alert("Keine freigeschaltete Firma gefunden!");
+        return;
+      }
+
+      state.firmen = fuser.map(f => ({
+        id: f.firmen.id,
+        name: f.firmen.name,
+        role: f.role
+      }));
+
+      state.currentFirmaId = state.firmen[0].id;
+      state.roleForFirma = state.firmen[0].role;
+
+      els.firmaSelect.innerHTML = state.firmen.map(f => `
+        <option value="${f.id}">${f.name}</option>`).join("");
+      els.firmaSelect.onchange = async () => {
+        state.currentFirmaId = els.firmaSelect.value;
+        const item = state.firmen.find(f => f.id === state.currentFirmaId);
+        state.roleForFirma = item?.role ?? "member";
+        await loadStructure();
+        setAdminVisibility();
+        await loadAnalyseData();
+
+      };
+
+      setAdminVisibility();
+      await loadStructure();
+      await loadAnalyseData();
+    }
+
+    // =========================
+    // 🧭 ADMIN SICHTBARKEIT
+    // =========================
+    function setAdminVisibility() {
+      const isAdmin = ["admin", "owner"].includes(state.roleForFirma);
+      els.btnSettings.style.display = isAdmin ? "inline-flex" : "none";
+    }
+
+    // =========================
+    // 🧩 ABTEILUNGEN + LINIEN
+    // =========================
+    async function loadStructure() {
+      if (!state.currentFirmaId) return;
+      const { data: abt } = await supabase
+        .from("abteilungen")
+        .select("*")
+        .eq("firma_id", state.currentFirmaId)
+        .order("name");
+      const { data: lin } = await supabase
+        .from("linien")
+        .select("*")
+        .eq("firma_id", state.currentFirmaId)
+        .order("name");
+
+      state.abteilungen = abt ?? [];
+      state.linien = lin ?? [];
+
+      // Abt-Dropdown
+      els.abtSelect.innerHTML =
+        '<option value="">(Abteilung wählen)</option>' +
+        state.abteilungen.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+
+      els.abtSelect.onchange = async () => {
+  state.selectedAbtId = els.abtSelect.value || null;
+  
+  const filtered = state.linien.filter(l => l.abteilung_id === state.selectedAbtId);
+  els.linieSelect.innerHTML =
+    '<option value="">(Linie wählen)</option>' +
+    filtered.map(l => `<option value="${l.id}">${l.name}</option>`).join("");
+  els.linieSelect.disabled = !filtered.length;
+  await loadAnalyseData(); // ✅ lädt neu
+};
+
+
+      els.linieSelect.onchange = async () => {
+        state.selectedLinieId = els.linieSelect.value || null;
+        await loadAnalyseData();
+      };
+    }
+
+    // =========================
+// 📊 ANALYSE LADEN
+// =========================
+// =========================
+// 📊 ANALYSE LADEN (Fix-Version)
+// =========================
+async function loadAnalyseData() {
+  if (!state.currentFirmaId) return;
+
+  els.anaCards.innerHTML = `<div class="muted">⏳ Daten werden geladen...</div>`;
+
+  let query = supabase
+    .from("schichtbuch_eintraege")
+    .select("station, grund_id, stillstandsgruende ( name ), startzeit, endzeit, linie_id")
+    .eq("firma_id", state.currentFirmaId);
+
+  // 🔍 Filterlogik
+  if (state.selectedLinieId) {
+    query = query.eq("linie_id", state.selectedLinieId);
+  } else if (state.selectedAbtId) {
+    // Wenn Abteilung gewählt, filtere über Linien dieser Abteilung
+    const linienInAbt = state.linien
+      .filter(l => l.abteilung_id === state.selectedAbtId)
+      .map(l => l.id);
+
+    if (linienInAbt.length > 0) {
+      query = query.in("linie_id", linienInAbt);
+    } else {
+      els.anaCards.innerHTML = `<div class="muted">Keine Linien in dieser Abteilung</div>`;
+      return;
+    }
+  }
+
+  const { data, error } = await query.limit(400);
+
+  if (error) {
+    console.error("Fehler beim Laden:", error);
+    els.anaCards.innerHTML = `<div class="muted">⚠️ Fehler beim Laden der Daten</div>`;
+    return;
+  }
+
+  // 📊 Auswertung
+  const agg = {};
+  (data ?? []).forEach(r => {
+    const grund = r.stillstandsgruende?.name || "Unbekannt";
+    const key = `${r.station || "?"}_${grund}`;
+    const dur = Math.max(1, ((new Date(r.endzeit || r.startzeit) - new Date(r.startzeit)) / 60000) | 0);
+    if (!agg[key]) agg[key] = { station: r.station || "?", grund, count: 0, min: 0 };
+    agg[key].count++;
+    agg[key].min += dur;
+  });
+
+  const top = Object.values(agg).sort((a, b) => b.min - a.min).slice(0, 12);
+
+  els.anaCards.innerHTML =
+    top.map(
+      t => `
+      <div class="card">
+        <div class="card-title">${t.station}</div>
+        <div class="card-sub">${t.grund}</div>
+        <div class="metric">${t.min} min</div>
+        <div class="muted">Vorkommen: ${t.count}</div>
+      </div>`
+    ).join("") || `<div class="muted">Keine Daten gefunden</div>`;
+}
+
+
+    // Start
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+
+  <style>
+    select {
+  color: #111;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14'><path fill='%23000' d='M4 5l3 3 3-3z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+}
+select option {
+  color: #000;
+  background-color: #fff;
+}
+
+    :root{
+      --bg:#f5f5f7; --panel:#fff; --ink:#0b0b0c; --muted:#6b7280;
+      --line:#e5e7eb; --accent:#007aff; --radius:22px;
+      --shadow:0 20px 40px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);color:var(--ink);
+      display:flex;gap:0;opacity:0;transition:opacity .35s ease;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width:84px;background:#000;color:#fff;
+      display:flex;flex-direction:column;justify-content:space-between;
+      padding:16px 10px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+    }
+    .sbtn{
+      border:0;background:transparent;color:#fff;width:100%;
+      aspect-ratio:1;display:grid;place-items:center;
+      border-radius:16px;font-size:22px;cursor:pointer;
+      transition:.18s transform,.18s opacity;
+    }
+    .sbtn:hover{opacity:.9;transform:translateY(-1px)}
+
+    /* Main */
+    .main{
+      flex:1;display:flex;flex-direction:column;margin:14px;
+      border-radius:var(--radius);background:var(--panel);
+      box-shadow:var(--shadow);overflow:hidden;
+    }
+    .header{
+      padding:12px 16px;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+    }
+    .header h2{margin:0 12px 0 0;font-size:18px}
+    .chip{padding:8px 10px;border:1px solid var(--line);
+      border-radius:12px;background:#fafafa}
+    select{font:inherit;padding:8px 10px;border:1px solid var(--line);
+      border-radius:12px;background:#fff}
+
+    /* Analyse */
+    #panelAnalyse{flex:1;padding:24px;overflow-y:auto;}
+    .ana-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+    .card{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff}
+    .card-title{font-weight:600;margin-bottom:2px}
+    .card-sub{color:var(--muted);font-size:12px}
+    .metric{font-size:22px;font-weight:700;margin-top:8px}
+    .muted{color:var(--muted)}
+  </style>
+
+  <script>
+    document.addEventListener("DOMContentLoaded",()=>requestAnimationFrame(()=>document.body.style.opacity="1"));
+  </script>
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="navcol">
+      <button class="sbtn" data-nav="sb" title="Schichtbuch">📘</button>
+      <button class="sbtn" data-nav="ana" title="Analyse">📊</button>
+      <button class="sbtn" data-nav="set" title="Einstellungen" style="display:none">⚙️</button>
+    </div>
+    <button class="sbtn" data-nav="back" title="Zurück">⬅️</button>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="header">
+      <h2>Analyse</h2>
+      <div class="chip"><label>Firma </label><select id="firmaSelect"></select></div>
+      <div class="chip"><label>Abteilung </label><select id="abtSelect"></select></div>
+      <div class="chip"><label>Linie </label><select id="linieSelect" disabled></select></div>
+    </div>
+
+    <section id="panelAnalyse">
+      <h3 style="margin-top:0">📊 Schichtbuch-Analyse</h3>
+      <p class="muted">Top-Ausfälle & häufigste Stillstandsgründe</p>
+      <div id="anaCards" class="ana-row"></div>
+    </section>
+  </main>
+</body>
+</html>

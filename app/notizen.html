@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tenra — Notizen (FocusPad)</title>
+<meta name="color-scheme" content="dark light" />
+<style>
+  :root{
+    --chalk:#cfe8da;
+    --board:#1b2a23;
+    --glass: rgba(255,255,255,.08);
+    --stroke: rgba(255,255,255,.16);
+    --text:#eef2f4;
+    --muted:#a8b2bd;
+    --gold:#d4af37;
+    --radius:16px;
+    --edge-grab:10px; /* Randbreite zum Greifen */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  body{
+    background: var(--board) url('https://www.transparenttextures.com/patterns/green-dust-and-scratches.png');
+    background-size: cover;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  /* Topbar */
+  .top{
+    position:fixed; inset:12px 12px auto 12px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 12px; border:1px solid var(--stroke); border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+    backdrop-filter: blur(12px) saturate(140%);
+    z-index:1000;
+  }
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{
+    width:28px;height:28px;border-radius:9px;border:1px solid var(--stroke);
+    background: linear-gradient(135deg,#0f1218,#161a22);
+    position:relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06),0 4px 16px rgba(0,0,0,.35)
+  }
+  .logo::after{content:"";position:absolute;inset:-1px;border-radius:9px;background:linear-gradient(140deg,rgba(212,175,55,.35),rgba(0,0,0,0) 65%)}
+  .brand h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.2px}
+  .pills{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:13px}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;
+    background:rgba(0,0,0,.25); border:1px solid var(--stroke); color:var(--text)
+  }
+  .btn{
+    appearance:none; border:1px solid var(--stroke); border-radius:10px;
+    background:rgba(255,255,255,.08); color:var(--text); padding:8px 10px; cursor:pointer;
+    transition:transform .15s ease, background .2s ease, border-color .2s;
+  }
+  .btn:hover{transform:translateY(-1px); background:rgba(255,255,255,.12); border-color:rgba(212,175,55,.45)}
+  a.clean{color:inherit;text-decoration:none}
+
+  /* Board (Tafel) */
+  #board{
+    position:absolute; inset:0;
+    padding:0; /* Klick auf freie Fläche = neue Note */
+  }
+  /* feine Kreide-Linien */
+  #board::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,.03) 0 1px, transparent 1px 40px),
+                repeating-linear-gradient(to right,  rgba(255,255,255,.02) 0 1px, transparent 1px 40px);
+  }
+
+  /* Rechte halbtransparente Leiste */
+  .side{
+    position:fixed; top:12px; right:12px; bottom:12px; width:310px;
+    border:1px solid var(--stroke); border-radius:16px;
+    background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+    backdrop-filter: blur(14px) saturate(160%);
+    box-shadow: 0 10px 40px rgba(0,0,0,.45);
+    padding:14px; display:flex; flex-direction:column; gap:12px; z-index:1000;
+  }
+  .side h3{margin:0 0 6px 0; font-size:16px}
+  .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .fld{display:flex;flex-direction:column;gap:6px}
+  .fld label{font-size:12px;color:var(--muted)}
+  .inpt, .sel{
+    width:100%; padding:9px 10px; border-radius:10px; border:1px solid var(--stroke);
+    background: rgba(0,0,0,.25); color:var(--text); outline:none;
+  }
+  .hint{font-size:12px;color:var(--muted)}
+  .sep{height:1px;background:var(--stroke);margin:8px 0}
+
+  /* Sticky Notes */
+  .note{
+    position:absolute; min-width:160px; min-height:120px;
+    padding:10px 12px; border-radius:8px; resize: both; overflow: hidden;
+    filter: saturate(110%); box-shadow:0 10px 24px rgba(0,0,0,.35);
+    transform-origin:center; transition: box-shadow .15s ease, transform .1s ease;
+    user-select:none;
+  }
+  .note:hover{transform:scale(1.02); box-shadow:0 16px 40px rgba(0,0,0,.45)}
+  .note:active{cursor:grabbing}
+  .note.yellow{background:#fff78a}
+  .note.pink{background:#ffd3d9}
+  .note.blue{background:#b6e0ff}
+/* Fertig-X Button */
+.note .close-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ff4c4c;
+  cursor: pointer;
+  text-shadow: 0 0 3px rgba(255,255,255,.4), 0 0 6px rgba(255,0,0,.4);
+  opacity: 0.85;
+  transition: transform .15s ease, opacity .2s ease;
+  font-family: 'Chalkduster', 'Comic Sans MS', cursive;
+}
+.note .close-btn:hover {
+  opacity: 1;
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* erledigte Notiz */
+.note.done {
+  opacity: 0.5;
+  filter: grayscale(60%) blur(0.2px);
+  text-decoration: line-through;
+}
+
+  .note h4{
+    margin:0; font-size:16px; font-weight:700; color:#101010;
+    cursor:text; user-select:text;
+  }
+  .note p{
+    margin:6px 0 0; font-size:14px; line-height:1.35; color:#222;
+    white-space:pre-wrap; cursor:text; user-select:text; height:calc(100% - 28px); overflow:auto;
+  }
+
+  /* versteckte Info-Leiste unten links */
+  .footer{
+    position:fixed; left:12px; bottom:12px;
+    border:1px solid var(--stroke); border-radius:12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.04));
+    backdrop-filter: blur(12px);
+    padding:8px 12px; font-size:12px; color:var(--muted); z-index:1000;
+  }
+  .kbd{padding:2px 6px;border:1px solid var(--stroke);border-radius:6px;background:rgba(0,0,0,.25);color:var(--text)}
+</style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div class="top" id="topbar" style="display:none">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1 style="margin:0">FocusPad — Notizen</h1>
+        <div style="font-size:12px;color:var(--muted)">Tafel · Sticky Notes</div>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill">Firma: <span id="firm-label" style="margin-left:6px;color:#fff">–</span></span>
+      <span class="pill">Rolle: <span id="role-label" style="margin-left:6px;color:#fff">–</span></span>
+      <span class="pill">User: <span id="user-label" style="margin-left:6px;color:#fff">–</span></span>
+      <a class="btn clean" href="focuspad.html">← FocusPad</a>
+      <button id="logout" class="btn">Logout</button>
+    </div>
+  </div>
+
+  <!-- Rechte halbtransparente Leiste -->
+  <aside class="side" id="side" style="display:none">
+    <h3>📁 Firmen / Bereiche</h3>
+    <div class="fld">
+      <label>Bereich</label>
+      <div class="row">
+        <label class="row"><input type="radio" name="scope" value="persönlich" /> persönlich</label>
+        <label class="row"><input type="radio" name="scope" value="firma" /> firma</label>
+        <label class="row"><input type="radio" name="scope" value="abteilung" /> abteilung</label>
+        <label class="row"><input type="radio" name="scope" value="linie" /> linie</label>
+      </div>
+      <div class="hint">Bestimmt, welche Notizen geladen / gespeichert werden.</div>
+    </div>
+
+    <div class="sep"></div>
+
+<div class="fld">
+  <label>Abteilung</label>
+  <select id="fld-abteilung" class="sel">
+    <option value="">– Lade Abteilungen –</option>
+  </select>
+</div>
+
+<div class="fld">
+  <label>Linie</label>
+  <select id="fld-linie" class="sel">
+    <option value="">– Lade Linien –</option>
+  </select>
+</div>
+
+    <div class="sep"></div>
+
+    <div class="fld">
+      <label>Aktive Firma</label>
+      <select id="sel-firma" class="sel"></select>
+      <div class="hint">Nur Firmen mit Status <b>accepted</b>.</div>
+    </div>
+
+    <div class="row">
+      <button id="apply-scope" class="btn">Anwenden</button>
+      <button id="reload" class="btn">Neu laden</button>
+    </div>
+
+    <div class="sep"></div>
+    <div class="hint">
+      Tipp: <span class="kbd">Linksklick</span> = neue Notiz ·
+      <span class="kbd">Mittelklick</span> auf Note = löschen ·
+      Rand greifen = verschieben · Doppelklick = editieren
+    </div>
+  </aside>
+
+  <!-- Board -->
+  <div id="board"></div>
+
+  <!-- Mini-Footer -->
+  <div class="footer" id="footer" style="display:none">
+    Bereich: <b id="scope-label">–</b> · Abt: <b id="abt-label">–</b> · Linie: <b id="line-label">–</b>
+  </div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+////////////////////////////////////////////////////////////////////////////////
+// 🔧 SUPABASE CONFIG – EINTRAGEN
+////////////////////////////////////////////////////////////////////////////////
+ const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";     // <<-- EINTRAGEN
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";                   // <<-- EINTRAGEN
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+////////////////////////////////////////////////////////////////////////////////
+// 🧠 STATE
+////////////////////////////////////////////////////////////////////////////////
+const state = {
+  session: null,
+  user: null,
+  firms: [],
+  currentFirmaId: localStorage.getItem("Tenra.currentFirmaId") || null,
+  currentRole: localStorage.getItem("Tenra.currentRole") || null,
+
+  scope: localStorage.getItem("notes.scope") || "persönlich", // persönlich | firma | abteilung | linie
+  abteilung: localStorage.getItem("notes.abteilung") || (localStorage.getItem("Tenra.currentAbteilung") || ""),
+  linie: localStorage.getItem("notes.linie") || (localStorage.getItem("Tenra.currentLinie") || ""),
+
+  notes: new Map(), // id -> DOM
+};
+const colors = ["yellow", "pink", "blue"];
+
+////////////////////////////////////////////////////////////////////////////////
+// 🔐 GUARDS
+////////////////////////////////////////////////////////////////////////////////
+async function ensureSessionAndFirm() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return fail("Nicht eingeloggt. Bitte in Tenra anmelden.");
+
+  state.session = session;
+  state.user = session.user;
+
+  // firmen_user check
+  const { data: rows, error } = await supabase
+    .from("firmen_user")
+    .select("firma_id, role, status")
+    .eq("user_id", state.user.id)
+    .eq("status", "accepted");
+
+  if (error) return fail("Fehler beim Laden der Firmenzuordnung.");
+  if (!rows || rows.length === 0) return fail("Kein Firmenzugang (status=accepted) vorhanden.");
+
+  // Firmenliste laden
+  const ids = [...new Set(rows.map(r => r.firma_id))];
+  const { data: firms, error: err2 } = await supabase
+    .from("firmen")
+    .select("id, name")
+    .in("id", ids);
+
+  if (err2) return fail("Fehler beim Laden der Firmendaten.");
+
+  // join
+  const byId = Object.fromEntries((firms||[]).map(f => [String(f.id), f.name]));
+  state.firms = rows.map(r => ({
+    firma_id: String(r.firma_id),
+    role: r.role,
+    name: byId[String(r.firma_id)] || `Firma ${r.firma_id}`,
+  }));
+
+  // aktuelle Firma validieren
+  const stillValid = state.currentFirmaId && state.firms.some(f => f.firma_id === state.currentFirmaId);
+  if (!stillValid) {
+    // NICHT automatisch setzen (dein Wunsch: „niemals anzeigen lassen“ wenn nicht korrekt)
+    return fail("Bitte zuerst eine gültige Firma wählen (FocusPad öffnen) – Zugriff blockiert.");
+  }
+
+  // Rolle aktualisieren
+  const f = state.firms.find(x => x.firma_id === state.currentFirmaId);
+  if (!f) return fail("Ausgewählte Firma nicht mehr gültig.");
+  state.currentRole = f.role;
+
+  // UI Header füllen
+  document.getElementById("user-label").textContent = state.user.email || state.user.id;
+  document.getElementById("firm-label").textContent = state.firms.find(x=>x.firma_id===state.currentFirmaId)?.name || "–";
+  document.getElementById("role-label").textContent = state.currentRole || "–";
+
+  // rechte Leiste initialisieren
+  initSidePanel();
+
+  // UI einblenden
+  document.getElementById("topbar").style.display = "";
+  document.getElementById("side").style.display = "";
+  document.getElementById("footer").style.display = "";
+  return true;
+}
+
+function fail(msg){
+  console.warn("[Guard]", msg);
+  // absichtlich NICHTS rendern
+  alert(msg);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// 📥 LADEN / SPEICHERN (Supabase)
+////////////////////////////////////////////////////////////////////////////////
+function scopeFilter() {
+  // Filterobjekt für Supabase-Select
+  const filter = {
+    firma_id: state.currentFirmaId
+  };
+  if (state.scope === "persönlich") {
+    filter.user_id = state.user.id;
+  } else if (state.scope === "abteilung") {
+    filter.abteilung = state.abteilung || "__none__";
+  } else if (state.scope === "linie") {
+    filter.linie = state.linie || "__none__";
+  } else if (state.scope === "firma") {
+    // nur firma_id (alle Benutzer dieser Firma sichtbar) – wenn RLS das zulässt
+  }
+  return filter;
+}
+
+async function loadNotes() {
+  clearBoard();
+
+  const q = supabase.from("notizen").select("*").eq("firma_id", state.currentFirmaId).order("created_at", { ascending: true });
+
+  let query = q;
+  if (state.scope === "persönlich") {
+    query = query.eq("user_id", state.user.id);
+  } else if (state.scope === "abteilung") {
+    query = query.eq("abteilung", state.abteilung || "__none__");
+  } else if (state.scope === "linie") {
+    query = query.eq("linie", state.linie || "__none__");
+  } // scope "firma": keine weitere Einschränkung
+
+  const { data, error } = await query;
+  if (error) { console.error(error); return; }
+
+  (data || []).forEach(renderNoteFromRow);
+  
+}
+
+async function upsertNote(row){
+  const { data, error } = await supabase.from("notizen").upsert(row).select().limit(1);
+  if(error){ console.error("upsert error", error); }
+  return data?.[0] || null;
+}
+
+async function deleteNote(id){
+  const { error } = await supabase.from("notizen").delete().eq("id", id).eq("firma_id", state.currentFirmaId);
+  if(error){ console.error("delete error", error); }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/* 🧩 UI / BOARD / NOTES */
+////////////////////////////////////////////////////////////////////////////////
+const board = document.getElementById("board");
+const scopeLabel = document.getElementById("scope-label");
+const abtLabel = document.getElementById("abt-label");
+const lineLabel = document.getElementById("line-label");
+
+function clearBoard(){
+  state.notes.forEach(el => el.remove());
+  state.notes.clear();
+}
+
+function renderNoteFromRow(row){
+  
+
+  const el = document.createElement("div");
+  el.className = `note ${row.color || "yellow"}`;
+  el.style.left = (row.x || 60) + "px";
+  el.style.top = (row.y || 60) + "px";
+  if (row.width) el.style.width = row.width + "px";
+  if (row.height) el.style.height = row.height + "px";
+  el.dataset.id = row.id;
+
+  if (row.done) el.classList.add("done");
+
+  el.innerHTML = `
+    <h4 contenteditable="true" spellcheck="false">${escapeHtml(row.titel || "Titel")}</h4>
+    <p  contenteditable="true" spellcheck="false">${escapeHtml(row.inhalt || "Text...")}</p>
+  `;
+    // Fertig-X hinzufügen
+  const closeBtn = document.createElement("div");
+  closeBtn.className = "close-btn";
+  closeBtn.textContent = "X";
+  el.appendChild(closeBtn);
+
+closeBtn.addEventListener("click", async () => {
+  el.classList.toggle("done");
+
+  // Speichern in Supabase
+  const updated = {
+    id: row.id,
+    done: el.classList.contains("done"),
+  };
+  await upsertNote(updated);
+});
+
+
+
+  attachNoteEvents(el);
+  board.appendChild(el);
+  state.notes.set(row.id, el);
+}
+
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function randColor(){ return colors[Math.floor(Math.random()*colors.length)]; }
+
+function edgeHit(el, evt){
+  const r = el.getBoundingClientRect();
+  const pad = parseFloat(getComputedStyle(el).paddingLeft) || 0;
+  const x = evt.clientX - r.left, y = evt.clientY - r.top;
+  const nearLeft   = x <= parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-grab'));
+  const nearRight  = (r.width - x) <= parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-grab'));
+  const nearTop    = y <= parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-grab'));
+  const nearBottom = (r.height - y) <= parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge-grab'));
+  return (nearLeft || nearRight || nearTop || nearBottom);
+}
+
+function attachNoteEvents(el){
+  // Mittelklick = löschen
+  el.addEventListener("mousedown", async (e) => {
+    if (e.button === 1) { // middle
+      e.preventDefault();
+      const id = el.dataset.id;
+      el.remove();
+      state.notes.delete(id);
+      await deleteNote(id);
+    }
+  });
+
+  // Drag am Rand
+  let dragging = false, ox=0, oy=0;
+  el.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return; // nur linke Maustaste
+    // nur wenn Rand getroffen (10px)
+    if (!edgeHit(el, e)) return;
+    dragging = true;
+    el.style.cursor = "grabbing";
+    const r = el.getBoundingClientRect();
+    ox = e.clientX - r.left;
+    oy = e.clientY - r.top;
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!dragging) return;
+    const br = board.getBoundingClientRect();
+    const left = e.clientX - br.left - ox;
+    const top  = e.clientY - br.top  - oy;
+    el.style.left = Math.max(0, left) + "px";
+    el.style.top  = Math.max(0, top ) + "px";
+  });
+  document.addEventListener("mouseup", async () => {
+    if (!dragging) return;
+    dragging = false;
+    el.style.cursor = "";
+    await persistFromDom(el);
+  });
+
+  // Doppelklick = Text editieren (h4/p sind bereits contenteditable)
+  el.addEventListener("dblclick", () => { /* nichts weiter nötig */ });
+
+  // Änderungen speichern
+  el.addEventListener("input", debounce(async () => { await persistFromDom(el); }, 400));
+    el.addEventListener("mouseup", debounce(async () => { await persistFromDom(el); }, 400));
+}
+
+async function persistFromDom(el){
+  
+  const id = el.dataset.id;
+  const h4 = el.querySelector("h4");
+  const p  = el.querySelector("p");
+  const rect = el.getBoundingClientRect();
+  const br = board.getBoundingClientRect();
+
+  const row = {
+    id,
+    firma_id: state.currentFirmaId,
+    user_id: state.user.id,
+    bereich: state.scope,
+    abteilung: state.abteilung,
+    linie: state.linie,
+    titel: h4.textContent.trim(),
+    inhalt: p.textContent.trim(),
+    x: parseFloat(el.style.left),
+    y: parseFloat(el.style.top),
+    width: rect.width,
+    height: rect.height,
+    color: colors.find(c=>el.classList.contains(c)) || "yellow",
+    done: el.classList.contains("done")
+
+    
+  };
+  await upsertNote(row);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// 🆕 Neue Notiz anlegen (Linksklick auf freie Fläche)
+////////////////////////////////////////////////////////////////////////////////
+board.addEventListener("click", async (e)=>{
+  if(e.target!==board) return; // nur freier Bereich
+  const color = randColor();
+  const id = crypto.randomUUID();
+  const x = e.offsetX - 80;
+  const y = e.offsetY - 60;
+  const row = {
+    id,
+    firma_id: state.currentFirmaId,
+    user_id: state.user.id,
+    bereich: state.scope,
+    abteilung: state.abteilung,
+    linie: state.linie,
+    titel: "Titel",
+    inhalt: "Text...",
+    x,y,
+    width:180,
+    height:140,
+    color
+  };
+  renderNoteFromRow(row);
+  await upsertNote(row);
+});
+
+////////////////////////////////////////////////////////////////////////////////
+// ⚙️ Seitenleiste initialisieren
+////////////////////////////////////////////////////////////////////////////////
+async function initSidePanel(){
+    // 🧭 Automatische Abteilung/Linie ermitteln aus Dashboard-Session
+  // Prüft zuerst, ob Dashboard-Werte im localStorage existieren (z. B. aus Tenra.dashboard)
+  const dashAbt = localStorage.getItem("Tenra.currentAbteilung");
+  const dashLine = localStorage.getItem("Tenra.currentLinie");
+
+  if (dashAbt && !state.abteilung) {
+    state.abteilung = dashAbt;
+    localStorage.setItem("notes.abteilung", dashAbt);
+  }
+  if (dashLine && !state.linie) {
+    state.linie = dashLine;
+    localStorage.setItem("notes.linie", dashLine);
+  }
+
+  // 🧩 Eingabefelder automatisch ausfüllen (sichtbar in Sidebar)
+  document.getElementById("fld-abteilung").value = state.abteilung || dashAbt || "";
+  document.getElementById("fld-linie").value = state.linie || dashLine || "";
+
+  const selFirma = document.getElementById("sel-firma");
+  selFirma.innerHTML = "";
+  state.firms.forEach(f=>{
+    const opt = document.createElement("option");
+    opt.value = f.firma_id;
+    opt.textContent = f.name;
+    if(f.firma_id===state.currentFirmaId) opt.selected=true;
+    selFirma.appendChild(opt);
+  });
+
+  // Bereich Radios
+  document.querySelectorAll("input[name=scope]").forEach(r=>{
+    r.checked = r.value===state.scope;
+  });
+
+ 
+ await loadAbteilungenUndLinien();
+
+
+  // Footer aktualisieren
+  updateFooter();
+
+  // Buttons
+  document.getElementById("apply-scope").onclick = ()=>{
+    const scope = document.querySelector("input[name=scope]:checked")?.value || "persönlich";
+    const abt = document.getElementById("fld-abteilung").value.trim();
+    const lin = document.getElementById("fld-linie").value.trim();
+    const fid = document.getElementById("sel-firma").value;
+
+    state.scope = scope;
+    state.abteilung = abt;
+    state.linie = lin;
+    state.currentFirmaId = fid;
+
+    localStorage.setItem("notes.scope", scope);
+    localStorage.setItem("notes.abteilung", abt);
+    localStorage.setItem("notes.linie", lin);
+    localStorage.setItem("Tenra.currentFirmaId", fid);
+
+    
+    updateFooter();
+    loadNotes();
+    
+  };
+  document.getElementById("reload").onclick = ()=>loadNotes();
+}
+// 🔽 Abteilungen & Linien aus Supabase laden (getrennte Tabellen)
+async function loadAbteilungenUndLinien() {
+  try {
+    if (!state.currentFirmaId) return;
+
+    // 🟢 1. Abteilungen aus Tabelle "abteilungen" abrufen
+    const { data: abtRows, error: err1 } = await supabase
+      .from("abteilungen")
+      .select("id, name")
+      .eq("firma_id", state.currentFirmaId)
+      .order("name", { ascending: true });
+
+    if (err1) throw err1;
+
+    const abtSel = document.getElementById("fld-abteilung");
+    abtSel.innerHTML = `<option value="">– Abteilung wählen –</option>`;
+
+    (abtRows || []).forEach(row => {
+      const opt = document.createElement("option");
+      opt.value = row.id; // ID speichern
+      opt.textContent = row.name; // Name anzeigen
+      if (row.name === state.abteilung || row.id === state.abteilung) opt.selected = true;
+      abtSel.appendChild(opt);
+    });
+
+    // 2️⃣ Wenn Abteilung geändert → Linien laden
+    abtSel.addEventListener("change", async (e) => {
+      const abtId = e.target.value;
+      const abtName = abtRows.find(a => a.id === abtId)?.name || "";
+      state.abteilung = abtName;
+      localStorage.setItem("notes.abteilung", abtName);
+      await loadLinien(abtId);
+    });
+
+    // 3️⃣ Wenn schon Abteilung im State gespeichert → direkt Linien laden
+    if (state.abteilung) {
+      const abtMatch = abtRows.find(a => a.name === state.abteilung);
+      if (abtMatch) await loadLinien(abtMatch.id);
+    }
+
+  } catch (e) {
+    console.error("❌ Fehler beim Laden der Abteilungen:", e);
+  }
+}
+
+async function loadLinien(abteilungId) {
+  const linSel = document.getElementById("fld-linie");
+  linSel.innerHTML = `<option value="">– Lade Linien –</option>`;
+  if (!abteilungId) return;
+
+  try {
+    // 🟣 2. Linien aus Tabelle "linien" abrufen, die zu dieser Abteilung gehören
+    const { data: linRows, error: err2 } = await supabase
+      .from("linien")
+      .select("id, name")
+      .eq("firma_id", state.currentFirmaId)
+      .eq("abteilung_id", abteilungId)
+      .order("name", { ascending: true });
+
+    if (err2) throw err2;
+
+    linSel.innerHTML = `<option value="">– Linie wählen –</option>`;
+    (linRows || []).forEach(row => {
+      const opt = document.createElement("option");
+      opt.value = row.name;
+      opt.textContent = row.name;
+      if (row.name === state.linie) opt.selected = true;
+      linSel.appendChild(opt);
+    });
+
+    // Wenn User Linie auswählt → speichern
+    linSel.addEventListener("change", (e) => {
+      const lin = e.target.value;
+      state.linie = lin;
+      localStorage.setItem("notes.linie", lin);
+    });
+
+  } catch (e) {
+    console.error("❌ Fehler beim Laden der Linien:", e);
+  }
+}
+
+
+
+
+function updateFooter(){
+  scopeLabel.textContent = state.scope;
+  abtLabel.textContent = state.abteilung || "–";
+  lineLabel.textContent = state.linie || "–";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// 🔄 Debounce Helper
+////////////////////////////////////////////////////////////////////////////////
+function debounce(fn,delay){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),delay)};}
+
+////////////////////////////////////////////////////////////////////////////////
+// 🚀 INIT
+////////////////////////////////////////////////////////////////////////////////
+(async ()=>{
+  const ok = await ensureSessionAndFirm();
+  if(!ok) return;
+  await loadNotes();
+})();
+
+////////////////////////////////////////////////////////////////////////////////
+// 🔒 Logout
+////////////////////////////////////////////////////////////////////////////////
+document.getElementById("logout").onclick = async()=>{
+  await supabase.auth.signOut();
+  window.location.href = "focuspad.html";
+};
+</script>
+</body>
+</html>
+

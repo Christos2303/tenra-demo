@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra — Schichtübergaben</title>
+  <style>
+    :root {
+      --bg:#0f1115; --card:#141821; --glass:rgba(255,255,255,.06); --stroke:rgba(255,255,255,.12);
+      --text:#f2f5f7; --muted:#a0a8b2; --blue:#0a84ff; --green:#2ecc71; --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#0f1115,#111520);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Arial,sans-serif;
+      color:var(--text)}
+    header{position:sticky;top:0;background:rgba(15,17,21,.7);backdrop-filter:blur(12px);
+      border-bottom:1px solid var(--stroke);z-index:50}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    h1{margin:0 0 6px;font-size:22px}
+    .sub{color:var(--muted);font-size:14px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+    .card{background:var(--card);border:1px solid var(--stroke);
+      border-radius:var(--radius);padding:16px}
+    .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--stroke);
+      background:var(--glass);padding:10px 14px;border-radius:12px;color:var(--text);cursor:pointer}
+    .btn.primary{background:var(--blue);border:none}
+    .btn.success{background:var(--green);border:none;color:#0b1a12}
+    select,input,textarea{width:100%;background:#0f131b;border:1px solid var(--stroke);
+      color:var(--text);padding:10px 12px;border-radius:10px}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;
+      border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--stroke);
+      font-size:12px}
+    .tabs{display:flex;gap:8px;margin-top:10px}
+    .tab{padding:10px 12px;border-radius:10px;border:1px solid var(--stroke);
+      cursor:pointer;background:rgba(255,255,255,.04)}
+    .tab.active{background:var(--blue);border-color:transparent}
+    .divider{height:1px;background:var(--stroke);margin:10px 0}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .empty{border:1px dashed var(--stroke);border-radius:12px;
+      padding:18px;text-align:center;color:var(--muted)}
+    .entry{border:1px solid var(--stroke);border-left:4px solid var(--blue);
+      border-radius:12px;padding:12px;background:rgba(255,255,255,.03)}
+    .entry .head{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+    .toast{position:fixed;bottom:18px;right:18px;background:#0b1421;border:1px solid #1d2735;
+      padding:12px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);
+      opacity:0;transform:translateY(8px);transition:.25s}
+    .toast.show{opacity:1;transform:translateY(0)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Schichtübergaben</h1>
+      <div class="sub">Formular + Verlauf (Admin/Owner: Konfigurator)</div>
+      <div class="row">
+        <div class="chip">Firma: <span id="firmalabel">–</span></div>
+        <div class="chip">Abteilung: <select id="selAbt"></select></div>
+        <div class="chip">Linie: <select id="selLinie"></select></div>
+        <div class="chip">Rolle: <span id="rolelabel">–</span></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" data-tab="form">Formular</div>
+        <div class="tab" data-tab="history">Verlauf</div>
+        <div class="tab" data-tab="config">Konfigurator</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="view-form" class="card"></section>
+    <section id="view-history" class="card" style="display:none"></section>
+    <section id="view-config" class="card" style="display:none"></section>
+  </main>
+
+  <div id="toast" class="toast">Gespeichert.</div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    const supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+
+    const $ = s=>document.querySelector(s);
+    const el=(t,a={},c=[])=>{const n=document.createElement(t);
+      Object.entries(a).forEach(([k,v])=>k==="html"?n.innerHTML=v:n.setAttribute(k,v));
+      c.forEach(x=>n.appendChild(x));return n;};
+    const toast=msg=>{const t=$("#toast");t.textContent=msg;t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"),1800);};
+
+    const state={session:null,user:null,role:"member",firma_id:null,abteilung:null,linie:null,template:[]};
+
+    // 🔐 Session & Userfirma laden
+    async function ensureSession(){
+      const { data:{session} }=await supabase.auth.getSession();
+      if(!session){alert("Nicht eingeloggt.");return false;}
+      state.session=session;state.user=session.user;return true;
+    }
+
+    async function loadUserFirma(){
+      const { data }=await supabase.from("firmen_user").select("firma_id,role,status").eq("user_id",state.user.id).eq("status","accepted");
+      if(!data?.length){alert("Keine Firmenzuordnung.");return false;}
+      state.firma_id=data[0].firma_id;state.role=data[0].role;
+      const { data:firm }=await supabase.from("firmen").select("name").eq("id",state.firma_id).maybeSingle();
+      $("#firmalabel").textContent=firm?.name||"–";
+      $("#rolelabel").textContent=state.role;
+      updateTabVisibility();
+      return true;
+    }
+
+    // 📂 Abteilungen/Linien
+    async function loadAbteilungen(){
+      const { data }=await supabase.from("abteilungen").select("id,name").eq("firma_id",state.firma_id);
+      const sel=$("#selAbt");sel.innerHTML="<option value=''>– Abteilung –</option>";
+      data?.forEach(a=>{const o=el("option",{value:a.id,html:a.name});sel.appendChild(o);});
+      sel.onchange=async e=>{state.abteilung=e.target.value;await loadLinien();};
+    }
+    async function loadLinien(){
+      const { data } = await supabase.from("linien").select("id,name").eq("abteilung_id", state.abteilung);
+const sel = $("#selLinie");
+sel.innerHTML = "<option value=''>– Linie –</option>";
+data?.forEach(l => {
+  const o = el("option", { value: l.id, html: l.name });
+  sel.appendChild(o);
+});
+sel.onchange = e => { state.linie = e.target.value; loadTemplate(); };
+
+    }
+
+    // 📄 Formular aus Vorlage
+    async function loadTemplate(){
+     const { data, error } = await supabase.from("schichtuebergaben_templates")
+  .select("config")
+  .eq("firma_id", state.firma_id)
+  .eq("abteilung_id", state.abteilung)
+  .eq("linie_id", state.linie)
+  .maybeSingle();
+
+      if(error||!data){$("#view-form").innerHTML="<div class='empty'>Keine Vorlage gefunden.</div>";state.template=[];return;}
+      state.template=data.config||[];
+      renderForm();
+      loadHistory();
+    }
+
+    function renderForm(){
+      const root=$("#view-form");
+      if(!state.template.length){root.innerHTML="<div class='empty'>Keine Felder definiert.</div>";return;}
+      const list=el("div",{class:"list"});
+      state.template.forEach(q=>{
+        const wrap=el("div",{class:"field-item"});
+        const label=el("label",{html:q.frage+(q.required?" *":"")});
+        let ctrl;
+        switch(q.typ){
+          case"text":ctrl=el("input",{type:"text"});break;
+          case"textarea":ctrl=el("textarea");break;
+          case"number":ctrl=el("input",{type:"number"});break;
+          case"checkbox":ctrl=el("input",{type:"checkbox"});break;
+          case"select":
+            ctrl=el("select");
+            (q.optionen||[]).forEach(o=>ctrl.appendChild(el("option",{value:o,html:o})));
+            break;
+          case"multiselect":
+            ctrl=el("select",{multiple:true});
+            (q.optionen||[]).forEach(o=>ctrl.appendChild(el("option",{value:o,html:o})));
+            break;
+          default:ctrl=el("input",{type:"text"});
+        }
+        ctrl.dataset.id=q.frage;
+        wrap.append(label,ctrl);
+        list.append(wrap);
+      });
+      const save=el("button",{class:"btn primary",html:"Übergabe speichern"});
+      save.onclick=submitForm;
+      root.innerHTML="";root.append(list,el("div",{class:"divider"}),save);
+    }
+
+    async function submitForm(){
+        if (!state.abteilung || !state.linie) {
+  toast("Bitte zuerst Abteilung & Linie wählen!");
+  return;
+}
+
+      const daten={};
+      $("#view-form").querySelectorAll("[data-id]").forEach(c=>{
+        daten[c.dataset.id]=c.type==="checkbox"?c.checked:
+          (c.multiple?Array.from(c.selectedOptions).map(o=>o.value):c.value);
+      });
+     const payload = {
+  firma_id: state.firma_id,
+  abteilung_id: state.abteilung,  // UUID statt Text
+  linie_id: state.linie,          // UUID statt Text
+  user_id: state.user.id,
+  daten
+};
+
+const { error } = await supabase.from("schichtuebergaben_entries").insert(payload);
+
+
+      if(error)toast("Fehler.");else toast("Übergabe gespeichert.");loadHistory();
+    }
+
+    // 📜 Verlauf
+   async function loadHistory() {
+  const root = $("#view-history");
+
+  // 🧩 1. Verlauf laden
+  const { data: entries, error: errEntries } = await supabase
+    .from("schichtuebergaben_entries")
+    .select("created_at,user_id,daten")
+    .eq("firma_id", state.firma_id)
+    .eq("abteilung_id", state.abteilung)
+    .eq("linie_id", state.linie)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  // 🧩 2. Vorlage laden, um Optionen mit anzuzeigen
+  const { data: templateData } = await supabase
+    .from("schichtuebergaben_templates")
+    .select("config")
+    .eq("firma_id", state.firma_id)
+    .eq("abteilung_id", state.abteilung)
+    .eq("linie_id", state.linie)
+    .maybeSingle();
+
+  const templateMap = {};
+  (templateData?.config || []).forEach(q => {
+    templateMap[q.frage] = q.optionen || [];
+  });
+
+  if (errEntries || !entries?.length) {
+    root.innerHTML = "<div class='empty'>Keine Übergaben gefunden.</div>";
+    return;
+  }
+
+  // 🧩 3. Anzeigen
+  const list = el("div", { class: "list" });
+  entries.forEach((r, i) => {
+    const head = el("div", {
+      class: "head",
+      html:
+        (i == 0 ? "Letzte " : "") +
+        "Übergabe • " +
+        new Date(r.created_at).toLocaleString() +
+        " • " +
+        (r.user_id?.slice(0, 8) || "–"),
+    });
+
+    const body = el("div", { class: "list" });
+
+    Object.entries(r.daten || {}).forEach(([frage, antwort]) => {
+      const options = templateMap[frage]?.length
+        ? ` <span style="color:var(--muted);font-size:12px">(Optionen: ${templateMap[frage].join(", ")})</span>`
+        : "";
+      const displayValue = Array.isArray(antwort)
+        ? antwort.join(", ")
+        : antwort;
+
+      body.append(
+        el("div", {
+          html: `<b>${frage}:</b> ${displayValue}${options}`,
+        })
+      );
+    });
+
+    list.append(el("div", { class: "entry" }, [head, el("div", { class: "divider" }), body]));
+  });
+
+  root.innerHTML = "";
+  root.append(list);
+}
+
+
+    // ⚙️ Neuer Konfigurator
+    function renderConfigurator(){
+      const root=$("#view-config");
+      if(state.role!=="admin"&&state.role!=="owner"){root.innerHTML="<div class='empty'>Keine Berechtigung.</div>";return;}
+      const addBtn=el("button",{class:"btn success",html:"Frage hinzufügen"});
+      const saveBtn=el("button",{class:"btn primary",html:"Vorlage speichern"});
+      const list=el("div",{class:"list"});
+      addBtn.onclick=()=>{
+        state.template.push({frage:"Neue Frage",typ:"text",required:false,optionen:[]});
+        renderQuestions(list);
+      };
+      saveBtn.onclick=saveTemplate;
+      root.innerHTML="";root.append(el("div",{class:"row"},[addBtn,saveBtn]),el("div",{class:"divider"}),list);
+      renderQuestions(list);
+    }
+
+    function renderQuestions(container){
+      container.innerHTML="";
+      if(!state.template.length){container.append(el("div",{class:"empty",html:"Keine Fragen."}));return;}
+      state.template.forEach((q,i)=>{
+        const frage=el("input",{value:q.frage});
+        frage.oninput=e=>q.frage=e.target.value;
+        const typ=el("select");
+        ["text","textarea","number","checkbox","select","multiselect"].forEach(t=>{
+          const o=el("option",{value:t,html:t});if(q.typ===t)o.selected=true;typ.append(o);
+        });
+        typ.onchange=e=>{q.typ=e.target.value;renderQuestions(container);};
+        const req=el("input",{type:"checkbox"});req.checked=q.required;req.onchange=e=>q.required=e.target.checked;
+        const del=el("button",{class:"btn",html:"🗑"});del.onclick=()=>{state.template.splice(i,1);renderQuestions(container);};
+        const block=el("div",{class:"field-item"});
+        block.append(el("label",{html:"Fragetext:"}),frage,el("label",{html:"Antworttyp:"}),typ,el("label",{html:"Pflichtfeld:"}),req);
+        if(["select","multiselect"].includes(q.typ)){
+          const opt=el("input",{value:(q.optionen||[]).join(", "),placeholder:"Optionen durch Komma trennen"});
+          opt.oninput=e=>q.optionen=e.target.value.split(",").map(x=>x.trim());
+          block.append(el("label",{html:"Optionen:"}),opt);
+        }
+        block.append(del);
+        container.append(block);
+      });
+    }
+
+    async function saveTemplate(){
+        if (!state.abteilung || !state.linie) {
+  toast("Bitte zuerst Abteilung & Linie wählen!");
+  return;
+}
+
+      const payload = {
+  firma_id: state.firma_id,
+  abteilung_id: state.abteilung,
+  linie_id: state.linie,
+  config: state.template,
+  created_by: state.user?.id,
+};
+
+const { error } = await supabase
+  .from("schichtuebergaben_templates")
+  .upsert(payload, { onConflict: "firma_id,abteilung_id,linie_id" });
+
+      if(error)toast("Fehler beim Speichern");else toast("Vorlage gespeichert");
+    }
+
+    // 🧭 Tabs
+    const tabs=document.querySelectorAll(".tab");
+    tabs.forEach(b=>b.onclick=()=>{
+      tabs.forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      ["form","history","config"].forEach(id=>$("#view-"+id).style.display=b.dataset.tab===id?"block":"none");
+      if(b.dataset.tab==="config")renderConfigurator();
+    });
+
+    function updateTabVisibility(){
+      $('[data-tab="config"]').style.display=(state.role==="admin"||state.role==="owner")?"inline-flex":"none";
+    }
+
+    // 🚀 Boot
+    (async()=>{
+      if(!await ensureSession())return;
+      await loadUserFirma();
+      await loadAbteilungen();
+    })();
+  </script>
+</body>
+</html>

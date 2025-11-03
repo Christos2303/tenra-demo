@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kostenlos starten — Tenra</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+</head>
+
+<body class="auth-body">
+  <div class="auth-bg"></div>
+
+  <header class="auth-header">
+    <a href="index.html" class="brand back">
+      <span class="logo-dot"></span><span class="brand-text">Tenra</span>
+    </a>
+  </header>
+
+  <main class="auth-container glass">
+    <h1>Kostenlos starten<span class="dot-blink">.</span></h1>
+    <p class="subtext">Erstelle deinen persönlichen Tenra-Account – völlig gratis.</p>
+
+    <form class="auth-form" onsubmit="return false">
+      <label>E-Mail-Adresse
+        <input type="email" id="regEmail" placeholder="name@email.de" required>
+      </label>
+      <label>Passwort
+        <input type="password" id="regPass" placeholder="••••••••" required>
+      </label>
+
+      <div class="auth-agree">
+        <label><input type="checkbox" required> Ich akzeptiere die <a href="#" class="link">AGB</a> & <a href="#" class="link">Datenschutz</a>.</label>
+      </div>
+
+      <button class="btn wide" id="regBtn" type="submit">Kostenlos registrieren</button>
+
+      <div class="or-line"><span>oder</span></div>
+      <a href="login.html" class="ghost wide">Zum Login</a>
+    </form>
+
+    <div class="auth-footer">
+      <p class="hint">Bereits registriert? <a href="login.html" class="link">Anmelden</a></p>
+      <p class="small muted">Starte kostenlos – Upgrade jederzeit möglich.</p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabaseClient.js"></script>
+<!-- Seiten-spezifisches Script danach: -->
+<script src="/js/auth.js"></script>        <!-- auf login/register -->
+<script src="/js/dashboard.js"></script>   <!-- auf dashboard -->
+
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Tenra</title>
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    window.supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+  </script>
+
+  <style>
+    .app.disabled {
+  opacity: 0.5;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+    :root{
+      --bg:#eef1f6;
+      --txt:#0f1222;
+      --muted:#5f6b85;
+      --glass: rgba(255,255,255,0.6);
+      --glass-strong: rgba(255,255,255,0.72);
+      --stroke: rgba(15,18,34,0.08);
+      --blue:#007aff;
+      --green:#23c483;
+      --amber:#f59f00;
+      --shadow: 0 20px 60px rgba(16, 24, 40, 0.1);
+      --radius: 20px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      color:var(--txt); background:radial-gradient(1200px 800px at 10% -10%,#dfe6ff 0%,transparent 60%), radial-gradient(1200px 900px at 100% 0,#e7ffe7 0%,transparent 60%), var(--bg);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    /* Aurora backdrop */
+    .bg-aurora:before{
+      content:""; position:fixed; inset:-10% -10% auto -10%; height:60vh;
+      background: conic-gradient(from 180deg at 50% 50%, #a7b7ff 0deg, #b6f0ff 120deg, #b6ffd3 240deg, #a7b7ff 360deg);
+      filter: blur(80px) saturate(120%); opacity:.45; pointer-events:none;
+    }
+
+    /* Top Nav */
+    header.nav{
+      position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
+      padding:16px 24px; backdrop-filter:saturate(180%) blur(14px);
+      background:linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.45));
+      border-bottom:1px solid var(--stroke);
+    }
+    .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--txt); font-weight:700; letter-spacing:.2px;}
+    .logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#7aa3ff,#6df0a6); box-shadow:0 0 0 3px rgba(111,196,255,.2);}
+    .brand-text{font-size:16px}
+    .nav-right{display:flex; align-items:center; gap:12px}
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+      background:var(--glass-strong); border:1px solid var(--stroke); font-size:12px; color:var(--muted)
+    }
+    .logout{border:1px solid var(--stroke); background:#fff; padding:8px 12px; border-radius:12px; cursor:pointer}
+    .logout:hover{background:#f7f8fb}
+
+    /* Container */
+    .container{max-width:1100px;margin:32px auto;padding:0 20px}
+
+    /* Header */
+    .hero{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      background:var(--glass-strong); border:1px solid var(--stroke); border-radius:24px; padding:18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .hero-title{font-size:20px; font-weight:800; letter-spacing:.2px; margin:0}
+    .hero-sub{margin:4px 0 0; color:var(--muted); font-size:14px}
+    .hero-right{display:flex; align-items:center; gap:10px}
+    select.firm-switch{
+      border:1px solid var(--stroke); border-radius:12px; background:#fff; padding:8px 12px; font:inherit; color:var(--txt);
+    }
+
+    /* Grids */
+    .section{margin-top:28px}
+    .grid{
+      display:grid; gap:16px;
+      grid-template-columns: repeat(12, 1fr);
+    }
+
+    /* Big App tiles (Member) */
+    .app{
+      grid-column: span 4; min-height:150px; display:flex; flex-direction:column; justify-content:space-between;
+      background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px;
+      box-shadow:var(--shadow); transition:.2s transform, .2s box-shadow, .3s background;
+      position:relative; overflow:hidden; cursor:pointer;
+    }
+    .app:hover{ transform: translateY(-2px); box-shadow:0 24px 70px rgba(16,24,40,.14)}
+    .app .icon{
+      width:56px; height:56px; border-radius:16px; display:grid; place-items:center;
+      background:linear-gradient(135deg,#ffffff,#f5f8ff); border:1px solid var(--stroke);
+      font-size:26px;
+    }
+    .app h3{margin:10px 0 4px; font-size:16px}
+    .app p{margin:0; color:var(--muted); font-size:13px}
+    .badge{
+      position:absolute; right:12px; top:12px; padding:6px 8px; font-size:11px; border-radius:999px;
+      background:#fff; border:1px solid var(--stroke); color:var(--muted);
+    }
+
+    /* Owner tools (smaller) */
+    .tool{
+      grid-column: span 3; min-height:110px; background:#fff; border:1px solid var(--stroke); border-radius:16px; padding:12px;
+      display:flex; gap:12px; align-items:flex-start; transition:.2s transform, .2s box-shadow; cursor:pointer;
+    }
+    .tool:hover{ transform: translateY(-2px); box-shadow:0 16px 40px rgba(16,24,40,.12)}
+    .tool .icon{ width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:#f7f9ff; border:1px solid var(--stroke); font-size:20px}
+    .tool h4{margin:2px 0 2px; font-size:14px}
+    .tool p{margin:0; color:var(--muted); font-size:12px}
+
+    /* Sections titles */
+    .section-title{margin:0 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted)}
+
+    /* Free workspace cards */
+    .free-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+    .card{
+      background:var(--glass-strong); border:1px solid var(--stroke); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow)
+    }
+    .card h3{margin:0 0 6px}
+    .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; color:#fff; background:var(--blue); text-decoration:none}
+    .btn:hover{filter:brightness(.95)}
+    .link{color:var(--blue); text-decoration:none}
+
+    /* Responsive */
+    @media (max-width:1024px){
+      .app{grid-column: span 6}
+      .tool{grid-column: span 6}
+      .free-grid{grid-template-columns:1fr}
+    }
+    @media (max-width:640px){
+      .app{grid-column: span 12}
+      .tool{grid-column: span 12}
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      background:#111; color:#fff; padding:10px 14px; border-radius:12px; font-size:13px; opacity:0; transition:.3s; pointer-events:none;
+    }
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+  <div class="bg-aurora" aria-hidden="true"></div>
+
+  <header class="nav">
+    <a class="brand" href="/index.html">
+      <span class="logo-dot"></span><span class="brand-text">Tenra</span>
+    </a>
+    <div class="nav-right">
+      <span class="chip" id="userChip">…</span>
+      <button class="logout" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <h2 class="hero-title" id="heroTitle">Willkommen 👋</h2>
+        <p class="hero-sub" id="heroSub">Lade deine Firmen-Apps …</p>
+      </div>
+      <div class="hero-right">
+        <span class="chip" id="planChip">Plan: –</span>
+        <select class="firm-switch" id="firmSwitch" style="display:none"></select>
+      </div>
+    </section>
+
+    <!-- MEMBER APPS -->
+    <section class="section" id="memberSection" style="display:none">
+      <h3 class="section-title">Apps für dein Team</h3>
+      <div class="grid">
+        <article class="app" data-href="/app/schichtwechsel.html">
+          <div class="icon">🗓️</div>
+          <div>
+            <h3>Schichtwechsel</h3>
+            <p>PV/FA Übergaben, Checklisten & Status</p>
+          </div>
+          <span class="badge">Essential</span>
+        </article>
+
+        <article class="app" data-href="/app/urlaubsplaner.html">
+          <div class="icon">🏖️</div>
+          <div>
+            <h3>Urlaubsplaner</h3>
+            <p>Resttage, Anträge & Kalender</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/FocusPad.html">
+          <div class="icon">📝</div>
+          <div>
+            <h3>FocusPad</h3>
+            <p>Notizen, To-Dos & Übergaben</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/schichtbuch.html">
+          <div class="icon">📅</div>
+          <div>
+            <h3>Schichtbuch</h3>
+            <p>Plan ansehen & personalisieren</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/planner.html">
+          <div class="icon">🙋‍♂️</div>
+          <div>
+            <h3>Planer</h3>
+            <p>Ma, Band.. Planung</p>
+          </div>
+        </article>
+
+        <article class="app" data-href="/app/controlling.html">
+
+  <div class="icon">📊</div>
+  <div>
+    <h3>Controlling</h3>
+    <p>Controlling Bereich</p>
+  </div>
+  
+</article>
+
+      </div>
+    </section>
+
+    <!-- OWNER TOOLS -->
+    <section class="section" id="ownerSection" style="display:none">
+      <h3 class="section-title">Service-Zentrale</h3>
+
+      <div class="grid">
+        <article class="tool" data-href="/app/teamverwaltung.html">
+          <div class="icon">👥</div>
+          <div>
+            <h4>Teamverwaltung</h4>
+            <p>Rollen ändern, Mitglieder entfernen, Einladungen</p>
+          </div>
+        </article>
+
+        <article class="tool" id="billingPortal" style="cursor:pointer;">
+  <div class="icon">💳</div>
+  <div>
+    <h4>Rechnungen</h4>
+    <p id="billingStatus">Stripe-Kundenportal & Zahlungen</p>
+  </div>
+</article>
+
+
+        <article class="tool" data-href="/app/upgrade.html">
+          <div class="icon">⬆️</div>
+          <div>
+            <h4>Plan upgraden</h4>
+            <p>Limits & Funktionen erweitern</p>
+          </div>
+        </article>
+
+        <article class="tool" data-href="/app/struktur.html">
+  <div class="icon">🏗️</div>
+  <div>
+    <h4>Struktur & Schichten</h4>
+    <p>Firma → Abteilungen → Linien & Schichtzeiten</p>
+  </div>
+</article>
+
+
+        <article class="tool" data-href="/app/katalog.html">
+          <div class="icon">🧩</div>
+          <div>
+            <h4>App-Katalog</h4>
+            <p>Module aktivieren/deaktivieren</p>
+          </div>
+        </article>
+      </div>
+
+      
+    </section>
+
+    
+
+    <!-- FREE WORKSPACE (fallback) -->
+
+<!-- 💡 INTERAKTIVE DEMO -->
+<article class="app" data-href="/Demo.html" style="background:linear-gradient(135deg,#007aff,#00ffa3);color:#fff;text-align:center;">
+  <div class="icon" style="background:rgba(255,255,255,0.15);border:none;">🧠</div>
+  <div>
+    <h3 style="font-size:18px;margin-bottom:6px;">Interaktive Demo</h3>
+    <p>Teste Tenra live – alle Module in Aktion</p>
+  </div>
+  <span class="badge" style="background:rgba(255,255,255,0.25);color:#fff;border:none;">Neu</span>
+</article>
+
+
+    <section class="section" id="freeSection" style="display:none">
+      <h3 class="section-title">Dein Bereich ohne Firmenbindung</h3>
+      <div class="free-grid">
+        <article class="card">
+          <h3>Schichtbuch (Demo)</h3>
+          <p>Teste die Oberfläche im Demo-Modus.</p>
+          <a class="link" href="/Demo.html">Öffnen →</a>
+        </article>
+        <article class="card">
+          <h3>Tagesjournal (Demo)</h3>
+          <p>Einfach ausprobieren – Daten sind nur lokal.</p>
+          <a class="link" href="/Demo">Öffnen →</a>
+        </article>
+        <article class="card">
+          <h3>Upgrade auf Firmenkonto</h3>
+          <p>Eigenen Bereich erstellen, Team einladen, Module freischalten.</p>
+          <a class="btn" href="/app/upgrade.html">Jetzt upgraden</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    const $ = (q)=>document.querySelector(q);
+    const $$ = (q)=>document.querySelectorAll(q);
+    const toast = (msg)=>{ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
+
+    const logoutBtn = $("#logoutBtn");
+    logoutBtn?.addEventListener("click", async ()=>{
+      await supabase.auth.signOut();
+      window.location.href = "/index.html";
+    });
+
+    const userChip = $("#userChip");
+    const heroTitle = $("#heroTitle");
+    const heroSub   = $("#heroSub");
+    const planChip  = $("#planChip");
+    const firmSwitch= $("#firmSwitch");
+
+    const memberSection = $("#memberSection");
+    const ownerSection  = $("#ownerSection");
+    const freeSection   = $("#freeSection");
+
+    // Click handlers for cards
+    [...$$(".app"), ...$$(".tool")].forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const href = el.getAttribute("data-href");
+        if(href) window.location.href = href;
+      });
+    });
+
+    // Load session & user
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+  // 🔐 Session sicher im localStorage zwischenspeichern
+  localStorage.setItem("sb-session", JSON.stringify(session));
+}
+
+    if(!session){
+      // Optional: redirect to login
+      heroTitle.textContent = "Bitte einloggen";
+      heroSub.textContent   = "Du bist nicht angemeldet.";
+      freeSection.style.display = "block";
+    }
+    
+
+
+
+
+
+
+    
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if(user){
+      userChip.textContent = user.email || "Eingeloggt";
+      heroTitle.innerHTML = `Willkommen, <b>${user.email ?? "User"}</b> 👋`;
+    }
+// 🔹 Aktive Firmen-ID global speichern
+let activeFirmaId = null;
+
+    // Fetch firm memberships (accepted)
+    // Hinweis: Passe das Select an deine FK-Bezeichnung an (firma_id -> firmen.id)
+    const { data: memberships, error: memErr } = await supabase
+  .from("firmen_user")
+  .select("firma_id, role, status")
+  .eq("user_id", user?.id ?? "")
+  .eq("status", "accepted");
+
+  if (memberships && memberships.length > 0) {
+  for (const m of memberships) {
+    const { data: firm } = await supabase
+      .from("firmen")
+      .select("id, name, plan, logo_url")
+      .eq("id", m.firma_id)
+      .single();
+    m.firmen = firm;
+  }
+}
+
+
+    if(memErr){
+      console.error(memErr);
+      heroSub.textContent = "Fehler beim Laden deiner Firma.";
+      freeSection.style.display = "block";
+    }
+
+    if(!memberships || memberships.length === 0){
+      // Kein Firmenbereich → Free Workspace
+      heroSub.textContent = "Du nutzt aktuell den Free Workspace (ohne Firmenbereich).";
+      planChip.textContent = "Plan: Free";
+      freeSection.style.display = "block";
+    }else{
+      // Firmenswitcher (falls mehrere)
+      if(memberships.length > 1){
+        firmSwitch.style.display = "inline-block";
+        memberships.forEach((m,i)=>{
+          const opt = document.createElement("option");
+          opt.value = i;
+          opt.textContent = m.firmen?.name ?? `Firma ${m.firma_id.slice(0,6)}`;
+          firmSwitch.appendChild(opt);
+        });
+        firmSwitch.addEventListener("change", ()=> render(+firmSwitch.value));
+      }
+      render(0);
+    }
+// 🧩 Filter: Nur aktive Module anzeigen
+// 🧩 Nur aktive Module anzeigen (mit Mapping für alternative Keys)
+async function showActiveModules(firmaId) {
+  const { data: aktiveModule, error } = await supabase
+    .from("firmen_module")
+    .select("modul_key, aktiviert")
+    .eq("firma_id", firmaId);
+
+  if (error) {
+    console.error("❌ Fehler beim Laden der Module:", error);
+    return;
+  }
+
+  // 🔧 Mapping: alternative oder vereinfachte Namen zulassen
+  const keyMapping = {
+    urlaub: "urlaubsplaner",
+    urlaubsplan: "urlaubsplaner",
+    tagesjournal: "tagesbuch",
+    tagebuch: "tagesbuch",
+    planner: "planner",
+    controlling: "controlling",
+    stats: "statistik",
+  };
+
+  // 🔍 Module aus DB normalisieren + Mapping anwenden
+  const aktiveKeys = (aktiveModule || [])
+    .filter((m) => m.aktiviert === true)
+    .map((m) => {
+      const key = m.modul_key?.toLowerCase().trim();
+      return keyMapping[key] || key;
+    });
+
+  console.log("✅ Aktive Module (nach Mapping):", aktiveKeys);
+
+  // 🧩 Zeige oder verstecke Apps je nach Modulstatus
+  document.querySelectorAll(".app").forEach((card) => {
+    const key = card.dataset.href
+      ?.split("/app/")[1]
+      ?.replace(".html", "")
+      ?.toLowerCase()
+      ?.trim();
+
+    console.log("🔍 Vergleiche Modul:", key);
+
+    if (aktiveKeys.includes(key)) {
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
+
+    function render(idx){
+      const m = memberships[idx];
+        activeFirmaId = m.firma_id; // ✅ Aktive Firma global merken
+
+      const firmName = m.firmen?.name ?? "Deine Firma";
+      const plan     = m.firmen?.plan ?? "starter";
+      const role     = (m.role || "").toLowerCase();
+
+      heroSub.textContent = `Arbeitsbereich: ${firmName}`;
+      planChip.textContent = `Plan: ${capitalize(plan)}`;
+
+      // Member Apps immer anzeigen
+      memberSection.style.display = "block";
+
+      // Owner/ Admin Zusatz
+      if(role === "owner" || role === "admin"){
+  ownerSection.style.display = "block";
+
+  // Unterschiedliche Sichtbarkeit je nach Rolle:
+  const invoiceTool = document.querySelector('[data-href="/app/rechnungen.html"]');
+  const upgradeTool = document.querySelector('[data-href="/app/upgrade.html"]');
+
+  if (role === "admin") {
+    invoiceTool?.remove();  // Admin sieht keine Rechnungen
+    upgradeTool?.remove();  // Admin sieht kein Upgrade
+  }
+}
+else{
+        ownerSection.style.display = "none";
+      }
+
+      // Kleines Detail: Badge bei „Schichtwechsel“ je nach Plan
+      const badge = memberSection.querySelector(".app .badge");
+      // 🧩 Nur aktive Module anzeigen
+showActiveModules(activeFirmaId);
+
+      if(badge){
+        badge.textContent = (plan === "starter" ? "Essential" : plan === "team" ? "Team+" : "Business");
+        
+      }
+      
+    }
+
+    function capitalize(s){ return (s||"").slice(0,1).toUpperCase()+ (s||"").slice(1); }
+
+    // 💳 Rechnungen (Stripe Customer Portal)
+const billingCard = document.getElementById("billingPortal");
+const billingStatus = document.getElementById("billingStatus");
+
+billingCard.addEventListener("click", async () => {
+  try {
+    billingStatus.textContent = "Lade Stripe-Portal …";
+    billingCard.style.opacity = "0.6";
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      billingStatus.textContent = "❌ Bitte zuerst einloggen";
+      billingCard.style.opacity = "1";
+      return;
+    }
+    if (!activeFirmaId) {
+      billingStatus.textContent = "❌ Keine aktive Firma gefunden";
+      billingCard.style.opacity = "1";
+      return;
+    }
+
+    const res = await fetch(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/create-portal-link",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ firma_id: activeFirmaId }), // deine aktive Firmen-ID
+      }
+    );
+
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(txt || "Fehler beim Erstellen des Portals");
+    }
+
+    const { url } = await res.json();
+    if (url) {
+      billingStatus.textContent = "Weiterleitung …";
+      window.location.href = url; // 🔁 Weiterleitung zu Stripe-Portal
+    } else {
+      throw new Error("Keine URL erhalten");
+    }
+  } catch (err) {
+    console.error("❌ Billing-Portal Fehler:", err);
+    billingStatus.textContent = "Fehler: " + err.message;
+  } finally {
+    billingCard.style.opacity = "1";
+  }
+});
+
+  </script>
+</body>
+</html>

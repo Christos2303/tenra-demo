@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Teamverwaltung — Tenra</title>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    // Falls du eine eigene supabaseClient.js verwendest: diesen Block entfernen und window.supabase dort setzen.
+    window.supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+  </script>
+
+  <style>
+    :root{
+      --bg:#eef1f6;
+      --txt:#0f1222;
+      --muted:#5f6b85;
+      --glass: rgba(255,255,255,0.64);
+      --glass-strong: rgba(255,255,255,0.82);
+      --stroke: rgba(15,18,34,0.08);
+      --blue:#007aff;
+      --red:#ef4444;
+      --green:#22c55e;
+      --amber:#f59f00;
+      --shadow: 0 20px 60px rgba(16, 24, 40, 0.1);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      color:var(--txt);
+      background:
+        radial-gradient(1100px 700px at 5% -10%, #dfe6ff 0%, transparent 60%),
+        radial-gradient(1100px 700px at 110% 0%, #e7ffe7 0%, transparent 60%),
+        var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    header.nav{
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 20px;
+      backdrop-filter:saturate(160%) blur(10px);
+      background:linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,255,255,0.5));
+      border-bottom:1px solid var(--stroke);
+    }
+    .brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--txt); font-weight:800;}
+    .logo-dot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,#7aa3ff,#6df0a6)}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--glass-strong);border:1px solid var(--stroke);font-size:12px;color:var(--muted)}
+    .btn-ghost{border:1px solid var(--stroke); background:#fff; padding:8px 12px; border-radius:12px; cursor:pointer}
+    .btn-ghost:hover{background:#f7f8fb}
+
+    .container{max-width:1100px; margin:26px auto; padding:0 18px}
+
+    .hero{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      background:var(--glass-strong); border:1px solid var(--stroke); border-radius:22px; padding:18px 20px;
+      box-shadow: var(--shadow);
+    }
+    .hero h1{margin:0; font-size:20px}
+    .hero p{margin:4px 0 0; color:var(--muted); font-size:14px}
+    .hero-right{display:flex; align-items:center; gap:10px}
+    select, input, button{
+      font:inherit;
+    }
+    select.firm-switch{
+      border:1px solid var(--stroke); border-radius:12px; background:#fff; padding:8px 12px; color:var(--txt);
+    }
+
+    .section{margin-top:22px}
+    .section-title{margin:0 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted)}
+
+    /* Invite panel */
+    .panel{
+      background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius); padding:14px;
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:var(--shadow)
+    }
+    .panel input[type="email"]{
+      flex:1 1 260px; min-width:220px; border:1px solid var(--stroke); border-radius:12px; padding:10px 12px; background:#fff;
+    }
+    .panel select{border:1px solid var(--stroke); border-radius:12px; padding:10px 12px; background:#fff;}
+    .panel button{
+      border:none; border-radius:12px; padding:10px 14px; cursor:pointer; color:#fff; background:var(--blue);
+    }
+    .panel button:hover{filter:brightness(.96)}
+    .inline-note{font-size:12px; color:var(--muted)}
+
+    /* Table */
+    .table{
+      width:100%;
+      border-collapse:separate; border-spacing:0 10px;
+    }
+    .row{
+      display:grid; grid-template-columns: 28px 1.3fr 1.3fr 0.9fr 0.9fr 220px; align-items:center;
+      background:var(--glass-strong); border:1px solid var(--stroke); border-radius:14px; padding:10px 12px; gap:12px;
+    }
+    .row + .row{margin-top:10px}
+    .row .avatar{
+      width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,#f3f6ff,#ffffff); border:1px solid var(--stroke);
+      display:grid; place-items:center; font-size:12px; color:var(--muted)
+    }
+    .role-select, .status-chip{
+      border:1px solid var(--stroke); border-radius:10px; padding:8px 10px; background:#fff; font-size:13px;
+    }
+    .status-chip[data-status="pending"]{ background:#fff8e6; color:#7a4a00; border-color:#ffe2a7 }
+    .status-chip[data-status="accepted"]{ background:#ecfdf3; color:#065f46; border-color:#bbf7d0 }
+
+    .btn-danger, .btn-secondary, .btn-outline{
+      border-radius:10px; padding:8px 10px; font-size:13px; cursor:pointer;
+    }
+    .btn-danger{background:var(--red); color:#fff; border:none}
+    .btn-danger:hover{filter:brightness(.95)}
+    .btn-secondary{background:var(--blue); color:#fff; border:none}
+    .btn-secondary:hover{filter:brightness(.95)}
+    .btn-outline{background:#fff; color:var(--txt); border:1px solid var(--stroke)}
+    .btn-outline:hover{background:#f8f9fc}
+
+    .actions{display:flex; gap:8px; flex-wrap:wrap; justify-self:end}
+
+    /* Empty & error */
+    .empty{
+      padding:28px; text-align:center; color:var(--muted);
+      background:var(--glass); border:1px solid var(--stroke); border-radius:var(--radius)
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+      background:#111; color:#fff; padding:10px 14px; border-radius:12px; font-size:13px; opacity:0; transition:.3s; pointer-events:none;
+    }
+    .toast.show{opacity:1}
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="/index.html"><span class="logo-dot"></span> Tenra</a>
+    <div class="nav-right">
+      <span class="chip" id="userChip">–</span>
+      <button class="btn-ghost" id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Access Gate -->
+    <section class="hero">
+      <div>
+        <h1>Service-Zentrale · Teamverwaltung</h1>
+        <p id="heroSub">Lade Daten …</p>
+      </div>
+      <div class="hero-right">
+        <span class="chip" id="roleChip">Rolle: –</span>
+        <select class="firm-switch" id="firmSwitch" style="display:none"></select>
+      </div>
+    </section>
+
+    <!-- Invite -->
+    <section class="section" id="inviteSection" style="display:none">
+      <h3 class="section-title">Einladen</h3>
+      <div class="panel">
+        <input type="email" id="inviteEmail" placeholder="nutzerdomain@example.com" />
+        <select id="inviteRole">
+          <option value="member">Member</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button id="inviteBtn">Einladung erstellen</button>
+        <div class="inline-note" id="inviteResult"></div>
+      </div>
+    </section>
+
+    <!-- Members -->
+    <section class="section" id="membersSection" style="display:none">
+      <h3 class="section-title">Mitglieder</h3>
+      <div id="membersList"></div>
+      <div class="empty" id="emptyState" style="display:none">Keine Mitglieder gefunden.</div>
+    </section>
+
+    <!-- No Access -->
+    <section class="section" id="noAccess" style="display:none">
+      <div class="empty">Kein Zugriff. Diese Seite ist nur für <strong>Owner</strong> und <strong>Admins</strong> dieser Firma.</div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    const $ = (q)=>document.querySelector(q);
+    const $$ = (q)=>document.querySelectorAll(q);
+    const toast = (msg)=>{ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000); };
+
+    const logoutBtn = $("#logoutBtn");
+    logoutBtn?.addEventListener("click", async ()=>{ await supabase.auth.signOut(); location.href="/index.html"; });
+
+    const userChip   = $("#userChip");
+    const heroSub    = $("#heroSub");
+    const roleChip   = $("#roleChip");
+    const firmSwitch = $("#firmSwitch");
+    const inviteSection  = $("#inviteSection");
+    const membersSection = $("#membersSection");
+    const noAccess       = $("#noAccess");
+    const inviteEmail = $("#inviteEmail");
+    const inviteRole  = $("#inviteRole");
+    const inviteBtn   = $("#inviteBtn");
+    const inviteResult= $("#inviteResult");
+    const membersList = $("#membersList");
+    const emptyState  = $("#emptyState");
+
+    // --- Auth & Session ---
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { heroSub.textContent = "Nicht eingeloggt."; noAccess.style.display="block"; throw new Error("no session"); }
+    const jwt = session.access_token;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    userChip.textContent = user?.email ?? "Eingeloggt";
+
+    // --- Memberships of user (accepted only) ---
+    let memberships = [];
+    {
+      const { data, error } = await supabase
+        .from("firmen_user")
+        .select("firma_id, role, status")
+        .eq("user_id", user.id)
+        .eq("status", "accepted");
+      if (error) { console.error(error); heroSub.textContent="Fehler beim Laden deiner Firmenzuordnung."; noAccess.style.display="block"; throw error; }
+      memberships = data ?? [];
+    }
+
+    // Require at least one membership
+    if (memberships.length === 0) {
+      heroSub.textContent = "Du bist keiner Firma beigetreten.";
+      noAccess.style.display = "block";
+      throw new Error("no membership");
+    }
+
+    // Load firm infos for each membership
+    for (const m of memberships) {
+      const { data: firm } = await supabase
+        .from("firmen")
+        .select("id, name, plan, logo_url")
+        .eq("id", m.firma_id)
+        .single();
+      m.firm = firm;
+    }
+
+    // If multiple firms, enable switch
+    if (memberships.length > 1) {
+      firmSwitch.style.display = "inline-block";
+      memberships.forEach((m,i)=>{
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = m.firm?.name ?? m.firma_id.slice(0,8);
+        firmSwitch.appendChild(opt);
+      });
+      firmSwitch.addEventListener("change", ()=> render(+firmSwitch.value));
+    }
+
+    render(0);
+
+    async function render(idx){
+      const m = memberships[idx];
+      const { role, firm } = m;
+      heroSub.textContent = `Firma: ${firm?.name ?? m.firma_id}`;
+      roleChip.textContent = `Rolle: ${capitalize(role)}`;
+
+      // Access gate: only owner/admin
+      const isOwner = role === "owner";
+      const isAdmin = role === "admin";
+
+      if (!isOwner && !isAdmin) {
+        inviteSection.style.display = "none";
+        membersSection.style.display = "none";
+        noAccess.style.display = "block";
+        return;
+      }
+      noAccess.style.display = "none";
+      inviteSection.style.display = "block";
+      membersSection.style.display = "block";
+
+      // Owner vs Admin capabilities inside page:
+      // Admin kann Member verwalten, aber nicht Owner/Admin löschen oder deren Rolle verändern.
+      // Owner: volle Rechte.
+
+      // Wire Invite
+      inviteBtn.onclick = async ()=>{
+        const email = (inviteEmail.value || "").trim().toLowerCase();
+        const r     = inviteRole.value || "member";
+        if (!email) { toast("Bitte E-Mail eingeben"); return; }
+        inviteBtn.disabled = true;
+        inviteBtn.textContent = "Erstelle …";
+        inviteResult.textContent = "";
+
+        try {
+  // 🔹 Aktuelle Session abrufen (JWT Token)
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  if (!token) {
+    inviteResult.textContent = "❌ Kein gültiger Login-Token – bitte neu anmelden.";
+    return;
+  }
+
+  // 🔹 Request an Edge Function
+  const res = await fetch(
+    "https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/invite-user",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ JWT Header hinzufügen
+      },
+      body: JSON.stringify({
+        firma_id: m.firma_id,
+        email,
+        role: r,
+      }),
+    }
+  );
+
+  const txt = await res.text();
+  let payload;
+  try {
+    payload = JSON.parse(txt);
+  } catch {
+    payload = { message: txt };
+  }
+
+  // 🔹 Antwort auswerten
+  if (res.ok) {
+    if (payload.inviteLink) {
+      inviteResult.innerHTML = `
+        📨 Invite-Link: 
+        <a class="link" href="${payload.inviteLink}" target="_blank" rel="noopener">
+          ${payload.inviteLink}
+        </a>`;
+    } else {
+      inviteResult.textContent = "✅ Benutzer hinzugefügt (bereits registriert).";
+    }
+
+    inviteEmail.value = "";
+    await loadMembers(m.firma_id, { refresh: true });
+  } else {
+    inviteResult.textContent =
+      "❌ Fehler: " +
+      (payload?.error || payload?.message || txt || "Unbekannter Fehler");
+  }
+} catch (err) {
+  console.error("Invite Fehler:", err);
+  inviteResult.textContent = "❌ Verbindungsfehler – bitte später erneut versuchen.";
+} finally {
+  inviteBtn.disabled = false;
+  inviteBtn.textContent = "Einladung erstellen";
+}
+
+      };
+
+      await loadMembers(m.firma_id, { isOwner, isAdmin });
+    }
+
+    async function loadMembers(firma_id, opts={}){
+      const { isOwner=false, isAdmin=false, refresh=false } = opts;
+      if (refresh) { membersList.innerHTML = ""; }
+
+      // 1) Get firmen_user rows
+      const { data: rows, error } = await supabase
+        .from("firmen_user")
+        .select("id, user_id, invited_email, role, status, created_at")
+        .eq("firma_id", firma_id);
+
+      if (error) { console.error(error); membersList.innerHTML = ""; emptyState.style.display="block"; return; }
+
+      // 2) Fetch profiles for existing user_ids
+      const userIds = rows.filter(r=>!!r.user_id).map(r=>r.user_id);
+      let profilesMap = {};
+      if (userIds.length){
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, email, full_name, avatar_url")
+          .in("id", userIds);
+        for (const p of (profs||[])) profilesMap[p.id] = p;
+      }
+
+      membersList.innerHTML = "";
+      if (!rows.length){ emptyState.style.display="block"; return; }
+      emptyState.style.display="none";
+
+      rows.sort((a,b)=> (a.status===b.status ? 0 : a.status==="pending" ? 1 : -1));
+
+      for (const r of rows){
+        const prof = r.user_id ? profilesMap[r.user_id] : null;
+        const name = prof?.full_name || (prof?.email ?? r.invited_email ?? "—");
+        const email= prof?.email || r.invited_email || "—";
+
+        const canEditThisUser =
+          (isOwner) ||
+          (isAdmin && r.role === "member"); // Admin darf nur Member verändern
+
+        const canDeleteThisUser =
+          (isOwner) ||
+          (isAdmin && r.role === "member" && r.status !== "owner"); // Admin löscht nur Member
+
+        const row = document.createElement("div");
+        row.className = "row";
+
+        row.innerHTML = `
+          <div class="avatar">${ initials(name) }</div>
+          <div>${escapeHtml(name)}</div>
+          <div>${escapeHtml(email)}</div>
+          <div>
+            <select class="role-select" ${canEditThisUser ? "" : "disabled"}>
+              <option value="member" ${r.role==="member"?"selected":""}>Member</option>
+              <option value="admin" ${r.role==="admin"?"selected":""}>Admin</option>
+              <option value="owner" ${r.role==="owner"?"selected":""}>Owner</option>
+            </select>
+          </div>
+          <div>
+            <span class="status-chip" data-status="${r.status}">${r.status}</span>
+          </div>
+          <div class="actions">
+            ${ r.status==="pending"
+                ? `<button class="btn-outline js-resend">📤 Einladung erneut</button>`
+                : `` }
+            <button class="btn-secondary js-save" ${canEditThisUser ? "" : "disabled"}>✏️ Speichern</button>
+            <button class="btn-danger js-remove" ${canDeleteThisUser ? "" : "disabled"}>🗑️ Entfernen</button>
+          </div>
+        `;
+
+        // Handlers
+        const roleSelect = row.querySelector(".role-select");
+        const btnSave    = row.querySelector(".js-save");
+        const btnRemove  = row.querySelector(".js-remove");
+        const btnResend  = row.querySelector(".js-resend");
+
+        btnSave?.addEventListener("click", async ()=>{
+          const newRole = roleSelect.value;
+
+          // Sicherheit: Admin darf Owner/Admin nicht anheben/ändern
+          if (!isOwner && isAdmin && r.role !== "member") {
+            toast("Admin kann nur Member ändern.");
+            return;
+          }
+          // Sicherheit: Nur Owner darf Owner-Rollen setzen
+          if (!isOwner && newRole === "owner") {
+            toast("Nur Owner dürfen die Owner-Rolle vergeben.");
+            return;
+          }
+
+          btnSave.disabled = true; btnSave.textContent = "Speichert …";
+          try{
+            const res = await fetch("https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/update-role",{
+              method:"PATCH",
+              headers:{
+                "Content-Type":"application/json",
+                "Authorization": `Bearer ${ (await supabase.auth.getSession()).data.session.access_token }`
+              },
+              body: JSON.stringify({
+                firma_id: firma_id,
+                target_user_id: r.user_id,
+                role: newRole
+              })
+            });
+            if (res.ok) { toast("Rolle aktualisiert"); }
+            else { const msg = await res.text(); toast("Fehler: "+msg); }
+          } finally {
+            btnSave.disabled = false; btnSave.textContent = "✏️ Speichern";
+          }
+        });
+
+        btnRemove?.addEventListener("click", async ()=>{
+          if (!confirm(`Mitglied „${name}“ wirklich entfernen?`)) return;
+
+          // Admin darf keine Admins/Owner löschen
+          if (!isOwner && isAdmin && r.role !== "member") {
+            toast("Admin kann nur Member entfernen.");
+            return;
+          }
+
+          btnRemove.disabled = true; btnRemove.textContent = "Entfernt …";
+          try{
+            const res = await fetch("https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/remove-user",{
+              method:"DELETE",
+              headers:{
+                "Content-Type":"application/json",
+                "Authorization": `Bearer ${ (await supabase.auth.getSession()).data.session.access_token }`
+              },
+              body: JSON.stringify({
+                firma_id: firma_id,
+                target_user_id: r.user_id,
+                invited_email: r.invited_email
+              })
+            });
+            if (res.ok) { toast("Mitglied entfernt"); await loadMembers(firma_id, { isOwner, isAdmin, refresh:true }); }
+            else { const msg = await res.text(); toast("Fehler: "+msg); }
+          } finally {
+            btnRemove.disabled = false; btnRemove.textContent = "🗑️ Entfernen";
+          }
+        });
+
+        btnResend?.addEventListener("click", async ()=>{
+          btnResend.disabled = true; btnResend.textContent = "Sendet …";
+          try{
+            const res = await fetch("https://lajqzmlhcsxhpfbhmlxe.supabase.co/functions/v1/resend-invite",{
+              method:"POST",
+              headers:{
+                "Content-Type":"application/json",
+                "Authorization": `Bearer ${ (await supabase.auth.getSession()).data.session.access_token }`
+              },
+              body: JSON.stringify({
+                firma_id: firma_id,
+                email: r.invited_email
+              })
+            });
+            if (res.ok) { toast("Einladung erneut gesendet"); }
+            else { const msg = await res.text(); toast("Fehler: "+msg); }
+          } finally {
+            btnResend.disabled = false; btnResend.textContent = "📤 Einladung erneut";
+          }
+        });
+
+        membersList.appendChild(row);
+      }
+    }
+
+    function capitalize(s){ return (s||"").slice(0,1).toUpperCase()+ (s||"").slice(1); }
+    function initials(name){
+      const parts = (name||"").trim().split(/\s+/);
+      if (!parts.length) return "•";
+      const a = parts[0]?.[0] || ""; const b = parts[1]?.[0] || "";
+      return (a+b).toUpperCase() || "•";
+    }
+    function escapeHtml(str){ return (str??"").toString().replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;" }[m])); }
+  </script>
+</body>
+</html>

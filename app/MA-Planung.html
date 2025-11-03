@@ -1,0 +1,1301 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tenra – MA-Planung</title>
+<meta name="color-scheme" content="light" />
+<style>
+    #btnAddCode {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 12px;
+  transition: 0.2s;
+}
+#btnAddCode:hover {
+  background: #006ae0;
+  transform: translateY(-1px);
+}
+
+    .remove-btn {
+  display: none;
+  color: #e74c3c;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: 0.2s;
+}
+.remove-btn:hover {
+  transform: scale(1.2);
+}
+tr:hover .remove-btn {
+  display: inline;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #fff;
+  color: #222;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.2);
+  padding: 16px 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 2000;
+  animation: fadein 0.3s ease;
+}
+.toast button {
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.toast button.ok { background: #007aff; color: #fff; }
+.toast button.cancel { background: #eee; color: #222; }
+@keyframes fadein { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+
+:root{
+  --bg:#f6f7fb; --panel:#fff; --ink:#0c0d12; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#007aff; --hover:rgba(0,122,255,.06);
+  --radius:18px; --shadow:0 10px 30px rgba(0,0,0,.05);
+  --chip:#f8f9fb;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+header{
+  position:sticky; top:0; z-index:10;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  background:rgba(255,255,255,.8); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line); padding:12px 18px;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#007aff,#00c6ff)}
+header h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px}
+.meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{background:#fff;border:1px solid var(--line);padding:6px 10px;border-radius:999px;box-shadow:var(--shadow);font-size:13px;color:var(--muted)}
+button{font:inherit;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:9px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:transparent;color:#fff}
+button:hover{background:var(--hover);border-color:#d9dbe1}
+button.primary:hover{background:#006ae0}
+
+main{max-width:1200px;margin:28px auto;padding:0 18px;display:grid;gap:18px}
+
+/* Controls */
+.controls{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:14px; box-shadow:var(--shadow); display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+}
+.controls .chip{display:flex;gap:8px;align-items:center;background:var(--chip);border:1px solid var(--line);border-radius:12px;padding:6px 10px}
+select,input{font:inherit;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+.monthnav{margin-left:auto;display:flex;gap:8px;align-items:center}
+.monthnav b{min-width:170px;text-align:center}
+
+/* Layout */
+.grid{
+  display:grid; gap:16px;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+}
+
+/* Employee card */
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:14px; display:flex; flex-direction:column; gap:10px
+}
+.card-head{display:flex;align-items:center;justify-content:space-between}
+.name{font-weight:700}
+.small{color:var(--muted);font-size:12px}
+.card-ops{display:flex;gap:6px}
+.tagline{color:var(--muted);font-size:12px}
+
+/* Mini month bar */
+.monthbar{
+  display:grid; grid-template-columns: repeat(31, 1fr);
+  gap:4px; padding:6px; border:1px dashed #eef0f4; border-radius:12px; background:#fbfcfe;
+  overflow-x:auto;
+}
+.day{
+  height:28px; border-radius:8px; background:#fff; border:1px solid #edf0f5;
+  display:grid; place-items:center; font-size:12px; color:#2c2f36; position:relative;
+}
+.day[data-empty="true"]{color:#b5bcc9}
+.day:hover{outline:2px solid var(--hover)}
+.day .code{font-weight:700;font-size:12px}
+.day .dot{
+  position:absolute; right:3px; bottom:3px; width:6px; height:6px; border-radius:50%; background:#1111; display:none;
+}
+.day.has-note .dot{display:block; background:#1118}
+.legend{
+  display:flex; flex-wrap:wrap; gap:6px; margin-top:4px
+}
+.legend .lg{
+  display:flex; align-items:center; gap:6px; border:1px solid var(--line); padding:4px 8px; border-radius:999px; background:#fff; font-size:12px
+}
+.legend .sw{width:10px; height:10px; border-radius:50%}
+
+/* Insights */
+.insights{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:14px; display:grid; gap:10px
+}
+.info{display:flex; gap:8px; align-items:center; font-size:14px; color:#334155}
+.info b{font-size:16px}
+.info .pill{background:#f1f5ff; color:#125;}
+
+/* Modals */
+dialog{border:none;border-radius:16px;padding:0;width:min(520px,92vw);background:#fff;box-shadow:0 40px 80px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(0,0,0,.35);backdrop-filter:blur(3px)}
+.modal-head{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:700}
+.modal-body{padding:14px 16px;display:grid;gap:10px}
+.modal-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type="text"], textarea{width:100%}
+textarea{min-height:80px;resize:vertical}
+
+/* Read-only overlay for members */
+.ro{position:fixed;left:0;right:0;top:56px;padding:10px;background:#fff5;border-bottom:1px solid var(--line);text-align:center;color:#6b7280;display:none}
+.ro.show{display:block}
+
+/* Subtle separators in monthbar for weekends */
+.day[data-weekend="true"]{background:#f7f8fb}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo-dot"></span><h1>MA-Planung</h1></div>
+  <div class="meta">
+    <span class="pill" id="firm-pill">Firma: –</span>
+    <span class="pill" id="role-pill">Rolle: –</span>
+    <span class="pill" id="user-pill">User: –</span>
+    <a href="Planner.html"><button>← Planer</button></a>
+  </div>
+</header>
+
+<div id="readonlyBanner" class="ro">Nur Lesemodus – Änderungen sind Admin/Owner vorbehalten.</div>
+
+<main>
+  <!-- Controls -->
+  <section class="controls">
+    <div class="chip">
+      <label for="selAbt" class="small">Abteilung</label>
+      <select id="selAbt"></select>
+      </div>
+<div class="chip">
+  <label for="selShiftGroup" class="small">Schichtgruppe</label>
+  <select id="selShiftGroup">
+    <option value="">(alle)</option>
+  </select>
+
+    </div>
+    <div class="chip">
+      <label class="small">Monat</label>
+      <div class="monthnav">
+        <button id="btnPrev">◀</button>
+        <b id="monthLabel">–</b>
+        <button id="btnNext">▶</button>
+      </div>
+    </div>
+    <div class="chip">
+      <button id="btnAddEmployee">+ Mitarbeiter hinzufügen</button>
+    </div>
+
+    <div class="chip">
+  <button id="btnAddShift">+ Schicht hinzufügen</button>
+</div>
+<div class="chip"></div>
+<button id="btnAddCode">+ Code hinzufügen</button>
+</div>
+  </section>
+
+  <!-- Legend -->
+  <section class="controls" id="legendBox" style="gap:12px">
+    <button id="btnAddCode">+ Code hinzufügen</button>
+
+    <div class="small" style="min-width:80px">Legende</div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+ <!-- Table -->
+<section class="controls" style="overflow-x:auto;">
+  <table id="planTable" style="width:100%;border-collapse:collapse;">
+    <thead id="planHead"></thead>
+    <tbody id="planBody"></tbody>
+  </table>
+</section>
+
+
+  <!-- Insights -->
+  <section class="insights" id="insights">
+    <div class="info">💡 <span id="ins-tip">Lade Daten …</span></div>
+    <div class="row">
+      <span class="pill" id="ins-coverage">Belegung: –</span>
+      <span class="pill" id="ins-vac">Urlaub: –</span>
+      <span class="pill" id="ins-requests">Requests: –</span>
+    </div>
+  </section>
+</main>
+
+<!-- Modal: Tag bearbeiten -->
+<dialog id="dlgCell">
+  <div class="modal-head">Tag bearbeiten</div>
+  <form method="dialog" class="modal-body" id="cellForm">
+    <div class="row" style="width:100%">
+      <div style="flex:1">
+        <label class="small">Mitarbeiter</label>
+        <input id="cf_employee" type="text" readonly />
+      </div>
+      <div>
+        <label class="small">Tag</label>
+        <input id="cf_day" type="text" readonly style="width:90px"/>
+      </div>
+    </div>
+    <div class="row" style="width:100%">
+      <div style="flex:1">
+        <label class="small">Code</label>
+        <select id="cf_code" style="width:100%"></select>
+      </div>
+      <div>
+        <label class="small">Farbe</label>
+        <input id="cf_color" type="color" value="#e8f0ff" />
+      </div>
+    </div>
+    <div>
+      <label class="small">Kommentar</label>
+      <textarea id="cf_note" placeholder="Optionaler Kommentar…"></textarea>
+    </div>
+    <input type="hidden" id="cf_employee_id" />
+    <input type="hidden" id="cf_sheet_id" />
+  </form>
+  <div class="modal-foot">
+    <button id="cf_delete" class="danger">Löschen</button>
+    <button id="cf_cancel">Abbrechen</button>
+    <button id="cf_save" class="primary">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Modal: Mitarbeiter hinzufügen -->
+<dialog id="dlgEmployee">
+  <div class="modal-head">Mitarbeiter hinzufügen</div>
+  <form method="dialog" class="modal-body" id="empForm">
+    <div>
+      <label class="small">Anzeigename</label>
+      <input id="emp_name" type="text" placeholder="z. B. Müller Markus" />
+    </div>
+    <div>
+      <label class="small">Abteilung (optional)</label>
+      <select id="emp_abt"></select>
+    </div>
+    <div>
+  <label class="small">Schichtgruppe (optional)</label>
+  <select id="emp_shift">
+    <option value="">(keine)</option>
+  </select>
+</div>
+
+  </form>
+  <div class="modal-foot">
+    <button id="emp_cancel">Abbrechen</button>
+    <button id="emp_save" class="primary">Anlegen</button>
+  </div>
+</dialog>
+
+<!-- Modal: Schicht hinzufügen -->
+<dialog id="dlgShift">
+  <div class="modal-head">Schicht hinzufügen</div>
+  <form method="dialog" class="modal-body" id="shiftForm">
+    <div>
+      <label class="small">Schichtgruppe</label>
+<input id="shift_code" type="text" placeholder="z. B. A" maxlength="8" />
+    </div>
+    <div>
+      <label class="small">Bezeichnung</label>
+<input id="shift_label" type="text" placeholder="z. B. A-Schicht" />
+    </div>
+    <div>
+      <label class="small">Farbe</label>
+      <input id="shift_color" type="color" value="#007aff" />
+    </div>
+  </form>
+  <div class="modal-foot">
+    <button id="shift_cancel">Abbrechen</button>
+    <button id="shift_save" class="primary">Speichern</button>
+  </div>
+</dialog>
+
+<!-- Modal: Code hinzufügen -->
+<dialog id="dlgCode">
+  <div class="modal-head">Neuen Code hinzufügen</div>
+  <form method="dialog" class="modal-body" id="codeForm">
+    <div>
+      <label class="small">Code (z. B. U)</label>
+      <input id="code_code" type="text" maxlength="8" placeholder="z. B. U" />
+    </div>
+    <div>
+      <label class="small">Bezeichnung</label>
+      <input id="code_label" type="text" placeholder="z. B. Urlaub" />
+    </div>
+    <div>
+      <label class="small">Farbe</label>
+      <input id="code_color" type="color" value="#ff5555" />
+    </div>
+  </form>
+  <div class="modal-foot">
+    <button id="code_cancel">Abbrechen</button>
+    <button id="code_save" class="primary">Speichern</button>
+  </div>
+</dialog>
+
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// ===== Supabase Setup =====
+const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+// 🔧 Automatische Monats-Sheet-Erstellung
+async function ensureSheetExists(firma_id, abteilung_id, year, month) {
+  if (!firma_id) {
+    console.error("❌ ensureSheetExists: firma_id fehlt");
+    return null;
+  }
+
+  // 🧩 Abteilung-ID sicher definieren (null oder UUID)
+  const abt_id = abteilung_id ?? null;
+
+  // 1️⃣ Prüfen, ob Sheet bereits existiert
+  let query = supabase
+    .from("planner_sheets")
+    .select("id")
+    .eq("firma_id", firma_id)
+    .eq("year", year)
+    .eq("month", month);
+
+  if (abt_id === null) query = query.is("abteilung_id", null);
+  else query = query.eq("abteilung_id", abt_id);
+
+  const { data: existing, error: selErr } = await query.maybeSingle();
+
+  if (selErr) {
+    console.error("❌ Fehler beim Prüfen planner_sheets:", selErr);
+    return null;
+  }
+
+  if (existing) {
+    console.log("✅ Bestehender Sheet gefunden:", existing.id);
+    return existing.id;
+  }
+
+  // 2️⃣ Neuen Sheet anlegen
+  const title = `${new Date(year, month - 1).toLocaleString("de-DE", {
+    month: "long",
+    year: "numeric",
+  })}`;
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("planner_sheets")
+    .insert([
+      {
+        firma_id,
+        abteilung_id: abt_id,
+        year,
+        month,
+        title,
+      },
+    ])
+    .select("id")
+    .single();
+
+  if (insErr) {
+    console.error("❌ Fehler beim Erstellen planner_sheets:", insErr);
+    return null;
+  }
+
+  console.log("🆕 Neuer Sheet erstellt:", inserted.id);
+  return inserted.id;
+}
+
+// ===== State =====
+const state = {
+  session:null, user:null,
+  firma_id: localStorage.getItem("Tenra.currentFirmaId") || null,
+  role: localStorage.getItem("Tenra.currentRole") || null,
+  abteilungen: [],
+  abteilung_id: null,
+  legend: {},       // code -> {label,color}
+  shiftCodes: new Set(), // Arbeitscodes (aus planner_shifts)
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  sheet_id: null,
+  employees: [],
+  entriesByKey: new Map(), // key `${employee_id}-${day}` -> entry
+  readonly: false
+};
+
+// ===== Elements =====
+const els = {
+  firmPill: document.getElementById("firm-pill"),
+  rolePill: document.getElementById("role-pill"),
+  userPill: document.getElementById("user-pill"),
+  readonlyBanner: document.getElementById("readonlyBanner"),
+
+  selAbt: document.getElementById("selAbt"),
+  selShiftGroup: document.getElementById("selShiftGroup"),
+
+  btnPrev: document.getElementById("btnPrev"),
+  btnNext: document.getElementById("btnNext"),
+  monthLabel: document.getElementById("monthLabel"),
+  legend: document.getElementById("legend"),
+  legendBox: document.getElementById("legendBox"),
+
+  grid: document.getElementById("grid"),
+
+  insTip: document.getElementById("ins-tip"),
+  insCoverage: document.getElementById("ins-coverage"),
+  insVac: document.getElementById("ins-vac"),
+  insRequests: document.getElementById("ins-requests"),
+
+  dlgCell: document.getElementById("dlgCell"),
+  cellForm: document.getElementById("cellForm"),
+  cf_employee: document.getElementById("cf_employee"),
+  cf_day: document.getElementById("cf_day"),
+  cf_code: document.getElementById("cf_code"),
+  cf_color: document.getElementById("cf_color"),
+  cf_note: document.getElementById("cf_note"),
+  cf_employee_id: document.getElementById("cf_employee_id"),
+  cf_sheet_id: document.getElementById("cf_sheet_id"),
+  cf_save: document.getElementById("cf_save"),
+  cf_cancel: document.getElementById("cf_cancel"),
+  cf_delete: document.getElementById("cf_delete"),
+
+  btnAddEmployee: document.getElementById("btnAddEmployee"),
+  dlgEmployee: document.getElementById("dlgEmployee"),
+  empForm: document.getElementById("empForm"),
+  emp_name: document.getElementById("emp_name"),
+  emp_abt: document.getElementById("emp_abt"),
+  emp_save: document.getElementById("emp_save"),
+  emp_cancel: document.getElementById("emp_cancel"),
+    // 🔥 Schicht hinzufügen
+  btnAddShift: document.getElementById("btnAddShift"),
+  dlgShift: document.getElementById("dlgShift"),
+  shift_code: document.getElementById("shift_code"),
+  shift_label: document.getElementById("shift_label"),
+  shift_color: document.getElementById("shift_color"),
+  shift_save: document.getElementById("shift_save"),
+  shift_cancel: document.getElementById("shift_cancel"),
+  emp_shift: document.getElementById("emp_shift"),
+
+btnAddCode: document.getElementById("btnAddCode"),
+dlgCode: document.getElementById("dlgCode"),
+code_code: document.getElementById("code_code"),
+code_label: document.getElementById("code_label"),
+code_color: document.getElementById("code_color"),
+code_save: document.getElementById("code_save"),
+code_cancel: document.getElementById("code_cancel"),
+
+};
+
+// ===== Utils =====
+const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const daysInMonth = (y,m)=> new Date(y,m,0).getDate();
+const pad = n => String(n).padStart(2,"0");
+
+function setHeaderMeta(){
+  els.firmPill.textContent = "Firma: " + (state.firma_id || "–");
+  els.rolePill.textContent = "Rolle: " + (state.role || "–");
+  els.userPill.textContent = "User: " + (state.user?.email || "–");
+}
+function updateMonthLabel(){
+  els.monthLabel.textContent = `${MONTHS[state.month-1]} ${state.year}`;
+}
+function weekendFor(y,m,d){
+  const wd = new Date(y, m-1, d).getDay(); // 0=So
+  return wd===0 || wd===6;
+}
+function codeColor(code){
+  return state.legend?.[code]?.color || "#e8f0ff";
+}
+function codeLabel(code){
+  return state.legend?.[code]?.label || code;
+}
+function isWorkingCode(code){
+  return state.shiftCodes.has(code); // Codes aus planner_shifts
+}
+function ensureRole(){
+  const readonly = !(state.role==="admin" || state.role==="owner");
+  state.readonly = readonly;
+  els.readonlyBanner.classList.toggle("show", readonly);
+  els.btnAddEmployee.disabled = readonly;
+}
+
+// ===== Session & Bootstrap =====
+(async function init() {
+  // 🔑 Session prüfen
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    alert("Nicht eingeloggt. Bitte in Tenra anmelden.");
+    location.href = "Planner.html";
+    return;
+  }
+  state.session = session;
+  state.user = session.user;
+
+  // 🏢 Firma prüfen
+  if (!state.firma_id) {
+    alert("Keine Firma gewählt. Bitte zuerst im Planer auswählen.");
+    location.href = "Planner.html";
+    return;
+  }
+
+  // 🧠 Aktuelle Rolle direkt aus Supabase abrufen
+  const { data: rel, error } = await supabase
+    .from("firmen_user")
+    .select("role, status")
+    .eq("user_id", state.user.id)
+    .eq("firma_id", state.firma_id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Fehler beim Laden der Benutzerrolle:", error);
+    alert("Konnte Rolle nicht prüfen. Bitte neu anmelden.");
+    location.href = "Planner.html";
+    return;
+  }
+
+  // 🚫 Wenn kein Zugang oder nicht accepted → raus
+  if (!rel || rel.status !== "accepted") {
+    alert("❌ Kein aktiver Firmenzugang (status != accepted).");
+    location.href = "Planner.html";
+    return;
+  }
+
+  state.role = rel.role || "member";
+  localStorage.setItem("Tenra.currentRole", state.role);
+
+  // 🔒 Zugriffsschutz
+  if (!["admin", "owner"].includes(state.role)) {
+    document.body.innerHTML = `
+      <div style="
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        height:100vh;
+        font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+        background:#f8f9fb;
+        color:#222;
+        text-align:center;">
+        <div style="font-size:56px; margin-bottom:16px;">🚫</div>
+        <h2 style="margin:0;">Zugriff verweigert</h2>
+        <p style="color:#555;max-width:400px;margin:10px auto;">
+          Diese Seite ist nur für <b>Admins</b> und <b>Owner</b> verfügbar.
+        </p>
+        <button onclick="location.href='Planner.html'"
+          style="margin-top:20px;padding:10px 20px;border:none;border-radius:10px;background:#007aff;color:#fff;cursor:pointer;font-weight:600;">
+          Zurück zum Planer
+        </button>
+      </div>`;
+    return;
+  }
+
+  // ✅ Normale Initialisierung
+  setHeaderMeta();
+  ensureRole();
+  updateMonthLabel();
+
+  await loadAbteilungen();
+  await loadLegend();
+  await loadShiftCodes();
+  await ensurePlannerSheet();
+  await loadEmployees();
+  await loadEntries();
+  renderLegend();
+  renderGrid();
+  computeInsights();
+
+
+  await loadAbteilungen();
+  await loadLegend();
+  await loadShiftCodes();
+  await ensurePlannerSheet();
+  await loadEmployees();
+  await loadEntries();
+  renderLegend();
+  renderGrid();
+  computeInsights();
+
+  // Events
+  els.selAbt.onchange = async ()=>{
+    state.abteilung_id = els.selAbt.value || null;
+    await loadLegend();
+    await ensurePlannerSheet();
+    await loadEmployees();
+    await loadEntries();
+    renderLegend();
+    renderGrid();
+    computeInsights();
+    // Employee-dialog dropdown
+    renderEmpAbtOptions();
+  };
+
+  els.btnPrev.onclick = async ()=>{
+    state.month--; if(state.month===0){ state.month=12; state.year--; }
+    updateMonthLabel();
+    await ensurePlannerSheet();
+    await loadEntries();
+    renderGrid();
+    computeInsights();
+  };
+  els.btnNext.onclick = async ()=>{
+    state.month++; if(state.month===13){ state.month=1; state.year++; }
+    updateMonthLabel();
+    await ensurePlannerSheet();
+    await loadEntries();
+    renderGrid();
+    computeInsights();
+  };
+
+  // Modal events
+  els.cf_cancel.onclick = ()=> els.dlgCell.close();
+  els.cf_save.onclick = onSaveCell;
+  els.cf_delete.onclick = onDeleteCell;
+
+  // Employee add
+  els.btnAddEmployee.onclick = ()=>{
+  if(state.readonly) return;
+  els.emp_name.value = "";
+  renderEmpAbtOptions();
+  renderEmpShiftOptions();   // 🧩 neu
+  els.dlgEmployee.showModal();
+};
+
+  els.emp_cancel.onclick = ()=> els.dlgEmployee.close();
+  els.emp_save.onclick = onCreateEmployee;
+
+  // ✅ Schicht hinzufügen
+  els.btnAddShift.onclick = () => {
+
+
+    if (state.readonly) return;
+    els.shift_code.value = "";
+    els.shift_label.value = "";
+    els.shift_color.value = "#007aff";
+    els.dlgShift.showModal();
+  };
+  els.shift_cancel.onclick = () => els.dlgShift.close();
+els.shift_save.onclick = async () => {
+  const code = els.shift_code.value.trim();
+  const label = els.shift_label.value.trim();
+  const color = els.shift_color.value;
+
+  if (!code || !label) {
+    alert("Bitte Code und Bezeichnung angeben.");
+    return;
+  }
+
+  // 1) SchichtGRUPPE speichern (Spalte heißt 'label', nicht 'name')
+const shiftPayload = {
+  firma_id: state.firma_id,
+  abteilung_id: state.abteilung_id || null,
+  code,
+  label,
+  color,
+  start_time: "06:00",  // 🕕 Dummywert (Pflichtspalte)
+  end_time: "14:30",    // 🕞 Dummywert
+  is_active: true
+};
+
+
+  const insShift = await supabase.from("planner_shifts").insert(shiftPayload);
+  if (insShift.error) {
+    alert("Fehler beim Speichern der Schichtgruppe.");
+    console.error(insShift.error);
+    return;
+  }
+
+  // 2) Sofort in die Legende übernehmen, damit der Code auswählbar ist
+  await supabase
+    .from("planner_legend")
+    .upsert(
+      {
+        firma_id: state.firma_id,
+        abteilung_id: state.abteilung_id || null,
+        code,
+        label,
+        color
+      },
+      { onConflict: "firma_id,abteilung_id,code" }
+    );
+
+  // 3) Arbeitscodes neu laden (A, B, … gelten als „working“)
+  await loadShiftCodes();
+  await loadLegend();
+  renderLegend();
+
+  els.dlgShift.close();
+  alert("✅ Schichtgruppe hinzugefügt!");
+};
+
+
+    // ✅ Code hinzufügen
+els.btnAddCode.onclick = () => {
+  if (state.readonly) return;
+  els.code_code.value = "";
+  els.code_label.value = "";
+  els.code_color.value = "#ff5555";
+  els.dlgCode.showModal();
+};
+
+els.code_cancel.onclick = () => els.dlgCode.close();
+
+els.code_save.onclick = async () => {
+  const code = els.code_code.value.trim();
+  const label = els.code_label.value.trim();
+  const color = els.code_color.value;
+
+  if (!code || !label) {
+    alert("Bitte Code und Bezeichnung angeben.");
+    return;
+  }
+
+  const payload = {
+    firma_id: state.firma_id,
+    abteilung_id: state.abteilung_id || null,
+    code,
+    label,
+    color
+  };
+
+  const { error } = await supabase
+    .from("planner_legend")
+    .upsert(payload, { onConflict: "firma_id,abteilung_id,code" });
+
+  if (error) {
+    alert("Fehler beim Speichern des Codes.");
+    console.error(error);
+    return;
+  }
+
+  els.dlgCode.close();
+  await loadLegend(); // neu laden
+  renderLegend();     // Legende updaten
+  showToast("✅ Code hinzugefügt");
+};
+
+els.selShiftGroup.onchange = async () => {
+  state.shiftGroup = els.selShiftGroup.value || null;
+  await loadEmployees();
+  await loadEntries();
+  renderGrid();
+  computeInsights();
+};
+
+
+})();
+
+// ===== Data Loaders =====
+async function loadAbteilungen(){
+  const { data, error } = await supabase
+    .from("abteilungen")
+    .select("id,name")
+    .eq("firma_id", state.firma_id)
+    .order("name");
+  state.abteilungen = data || [];
+  els.selAbt.innerHTML = `<option value="">(keine Abteilung)</option>` + state.abteilungen.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+  // Behalte Auswahl falls vorhanden
+  if(state.abteilung_id){
+    els.selAbt.value = state.abteilung_id;
+  } else {
+    els.selAbt.value = "";
+    state.abteilung_id = null;
+  }
+}
+async function loadLegend(){
+  // Pull abteilungsspezifische + firmenspezifische; abteilung hat Vorrang
+  const { data: firmLeg } = await supabase
+    .from("planner_legend")
+    .select("*")
+    .eq("firma_id", state.firma_id)
+    .is("abteilung_id", null);
+
+  let abtLeg = [];
+  if(state.abteilung_id){
+    const { data } = await supabase
+      .from("planner_legend")
+      .select("*")
+      .eq("firma_id", state.firma_id)
+      .eq("abteilung_id", state.abteilung_id);
+    abtLeg = data || [];
+  }
+  const combined = {};
+  (firmLeg||[]).forEach(r => combined[r.code] = {label:r.label,color:r.color});
+  (abtLeg||[]).forEach(r => combined[r.code] = {label:r.label,color:r.color});
+  state.legend = combined;
+}
+async function loadShiftCodes(){
+  state.shiftCodes = new Set();
+  const allShifts = [];
+
+  // Firma
+  const { data: firm } = await supabase
+    .from("planner_shifts")
+    .select("code, label")
+    .eq("firma_id", state.firma_id)
+    .eq("is_active", true);
+  (firm || []).forEach(r=>{
+    state.shiftCodes.add(r.code);
+    allShifts.push(r);
+  });
+
+  // Dropdown "Schichtgruppe" füllen
+  els.selShiftGroup.innerHTML = `<option value="">(alle)</option>` + 
+    allShifts.map(s => `<option value="${s.code}">${s.label}</option>`).join("");
+
+  // Falls vorher gewählt → behalten
+  if(state.shiftGroup) els.selShiftGroup.value = state.shiftGroup;
+
+  // Rechts neben Dropdown ein "−" Button zum Entfernen
+if(!document.getElementById("btnRemoveShift")){
+  const b = document.createElement("button");
+  b.id = "btnRemoveShift";
+  b.textContent = "− Schicht löschen";
+  b.style.background = "#fff0f0";
+  b.style.border = "1px solid #f5c2c2";
+  b.onclick = async ()=>{
+    const val = els.selShiftGroup.value;
+    if(!val) return alert("Bitte Schichtgruppe auswählen");
+    showToast(`Schichtgruppe <b>${val}</b> wirklich entfernen?`, async ()=>{
+      const { error } = await supabase.from("planner_shifts").delete().eq("code", val).eq("firma_id", state.firma_id);
+      if(error){ showToast("❌ Löschen fehlgeschlagen", null, true); return; }
+      await loadShiftCodes();
+      renderLegend();
+      showToast("✅ Schichtgruppe entfernt");
+    });
+  };
+  els.selShiftGroup.parentElement.appendChild(b);
+}
+
+}
+
+async function ensurePlannerSheet(){
+  const payload = {
+    firma_id: state.firma_id,
+    abteilung_id: state.abteilung_id || null,
+    year: state.year,
+    month: state.month,
+    title: `${MONTHS[state.month-1]} ${state.year}`
+  };
+
+  // 🧩 korrektes Prüfen mit .is() bei null
+  let query = supabase
+    .from("planner_sheets")
+    .select("id")
+    .eq("firma_id", state.firma_id)
+    .eq("year", state.year)
+    .eq("month", state.month);
+
+  if(state.abteilung_id) query.eq("abteilung_id", state.abteilung_id);
+  else query.is("abteilung_id", null);
+
+  const { data: existing, error } = await query.maybeSingle();
+  if (error && error.code !== "PGRST116") {
+    console.error(error);
+    return null;
+  }
+
+  if (existing) {
+    state.sheet_id = existing.id;
+    return;
+  }
+
+  // 🆕 Wenn nicht vorhanden → anlegen
+  const { data: ins, error: insErr } = await supabase
+    .from("planner_sheets")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  if (insErr) {
+    console.error("❌ Fehler beim Erstellen planner_sheets:", insErr);
+    alert("Konnte Monats-Sheet nicht erstellen. Bitte erneut versuchen.");
+    return;
+  }
+
+  state.sheet_id = ins.id;
+  console.log("🆕 Monats-Sheet erstellt:", ins.id);
+}
+
+async function loadEmployees(){
+  const q = supabase
+    .from("planner_employees")
+    .select("id, display_name, active, sort_index, abteilung_id")
+    .eq("firma_id", state.firma_id)
+    .eq("active", true)
+    .order("sort_index", { ascending: true })
+    .order("display_name", { ascending: true });
+  if(state.abteilung_id) q.eq("abteilung_id", state.abteilung_id);
+if(state.shiftGroup) q.eq("shift_group", state.shiftGroup);
+
+  const { data, error } = await q;
+  if(error){ console.error(error); return; }
+  state.employees = data || [];
+}
+async function loadEntries(){
+  state.entriesByKey.clear();
+  if(!state.sheet_id) return;
+  const { data, error } = await supabase
+    .from("planner_entries")
+    .select("id, employee_id, day, code, note, color")
+    .eq("sheet_id", state.sheet_id);
+  if(error){ console.error(error); return; }
+  (data||[]).forEach(e=>{
+    state.entriesByKey.set(`${e.employee_id}-${e.day}`, e);
+  });
+}
+
+// ===== Render =====
+function renderLegend(){
+  els.legend.innerHTML = "";
+  const codes = Object.keys(state.legend).sort((a,b)=> a.localeCompare(b));
+  if(!codes.length){
+    els.legendBox.style.display = "none";
+    return;
+  }
+  els.legendBox.style.display = "flex";
+  for(const code of codes){
+    const item = document.createElement("div");
+    item.className = "lg";
+   item.innerHTML = `
+  <span class="sw" style="background:${state.legend[code].color}" 
+        title="${state.legend[code].label}"></span>
+  <span title="${state.legend[code].label}">${code}</span>`;
+
+    els.legend.appendChild(item);
+  }
+}
+function renderGrid() {
+  const head = document.getElementById("planHead");
+  const body = document.getElementById("planBody");
+  head.innerHTML = "";
+  body.innerHTML = "";
+
+  const dim = daysInMonth(state.year, state.month);
+
+  // Kopfzeile (Tage)
+  let headHTML = "<tr><th style='text-align:left;padding:6px 10px;'>Mitarbeiter</th>";
+  for (let d = 1; d <= dim; d++) {
+    const wd = new Date(state.year, state.month - 1, d).getDay();
+    const isWeekend = wd === 0 || wd === 6;
+    headHTML += `<th style="padding:4px 6px;font-size:12px;color:${
+      isWeekend ? "#aaa" : "#333"
+    };">${pad(d)}</th>`;
+  }
+  headHTML += "</tr>";
+  head.innerHTML = headHTML;
+
+  // Zeilen (Mitarbeiter)
+  for (const emp of state.employees) {
+    let row = `<tr>
+  <th style='text-align:left;padding:6px 10px;'>
+    <span class="remove-btn" title="Entfernen" data-id="${emp.id}">−</span>
+    ${emp.display_name}
+  </th>`;
+
+    for (let d = 1; d <= dim; d++) {
+      const k = `${emp.id}-${d}`;
+      const e = state.entriesByKey.get(k);
+      const code = e?.code || "";
+      const color = e ? e.color || codeColor(code) : "#fff";
+      const wd = new Date(state.year, state.month - 1, d).getDay();
+      const isWeekend = wd === 0 || wd === 6;
+
+      row += `<td style="
+          text-align:center;
+          background:${color};
+          border:1px solid #e5e7eb;
+          ${isWeekend ? "opacity:0.8;" : ""}
+          cursor:${state.readonly ? "default" : "pointer"};
+        "
+        data-emp="${emp.id}"
+        data-day="${d}"
+        title="${e?.note || ""}"
+      >${code || ""}</td>`;
+    }
+    row += "</tr>";
+    body.insertAdjacentHTML("beforeend", row);
+  }
+
+  if (!state.readonly) {
+    document.querySelectorAll("#planBody td").forEach(td => {
+      td.addEventListener("click", () => {
+        const emp = state.employees.find(e => e.id == td.dataset.emp);
+        const day = Number(td.dataset.day);
+        const entry = state.entriesByKey.get(`${emp.id}-${day}`);
+        openCellDialog(emp, day, entry || null);
+      });
+    });
+  }
+  // Mitarbeiter löschen
+document.querySelectorAll(".remove-btn").forEach(btn => {
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const id = btn.dataset.id;
+    const emp = state.employees.find(x => x.id === id);
+    if(!emp) return;
+    showToast(`Mitarbeiter <b>${emp.display_name}</b> wirklich entfernen?`, async () => {
+      const { error } = await supabase
+  .from("planner_employees")
+  .delete()
+  .eq("id", emp.id); // ✅ sichergestellt, dass die echte UUID verwendet wird
+
+      if(error){
+        showToast("❌ Löschen fehlgeschlagen", null, true);
+        console.error(error);
+        return;
+      }
+      await loadEmployees();
+      await loadEntries();
+      renderGrid();
+      showToast("✅ Mitarbeiter entfernt");
+    });
+  });
+});
+
+}
+
+
+// ===== Dialogs =====
+function buildCodeOptions(){
+  const codes = Object.keys(state.legend);
+  els.cf_code.innerHTML = codes
+    .map(c => `<option value="${c}">${c} — ${state.legend[c].label}</option>`)
+    .join("");
+}
+
+function openCellDialog(emp, day, entry){
+  buildCodeOptions();
+  els.cf_employee.value = emp.display_name;
+  els.cf_employee_id.value = emp.id;
+  els.cf_day.value = `${pad(day)}.${pad(state.month)}.${state.year}`;
+  els.cf_sheet_id.value = state.sheet_id || "";
+  els.cf_code.value = entry?.code || (state.shiftCodes.has("9-5") ? "9-5" : (state.shiftCodes.values().next().value || "FS"));
+  els.cf_note.value = entry?.note || "";
+  els.cf_color.value = entry?.color || codeColor(els.cf_code.value);
+
+  // Farbe folgt Code-Auswahl
+  els.cf_code.onchange = ()=> {
+    const c = els.cf_code.value;
+    els.cf_color.value = codeColor(c);
+  };
+
+  // Delete sichtbar nur wenn Eintrag existiert
+  els.cf_delete.style.display = entry ? "inline-flex" : "none";
+
+  els.dlgCell.showModal();
+}
+async function onSaveCell() {
+  const employee_id = els.cf_employee_id.value;
+  const dayNum = Number(els.cf_day.value.slice(0, 2));
+  const code = els.cf_code.value;
+  const note = els.cf_note.value.trim() || null;
+  const color = els.cf_color.value || codeColor(code);
+
+  // 🧠 Sicherstellen, dass Monats-Sheet existiert
+  let sheet_id = state.sheet_id;
+  if (!sheet_id) {
+    sheet_id = await ensureSheetExists(state.firma_id, state.abteilung_id, state.year, state.month);
+    if (!sheet_id) {
+      alert("❌ Konnte Monats-Sheet nicht laden oder erstellen.");
+      return;
+    }
+    state.sheet_id = sheet_id;
+  }
+
+  // 🧩 Payload mit Firmen- und Abteilungs-ID ergänzen
+  const payload = {
+    sheet_id,
+    employee_id,
+    day: dayNum,
+    code,
+    note,
+    color,
+    created_by: state.user.id,
+    firma_id: state.firma_id,
+    abteilung_id: state.abteilung_id || null
+  };
+
+  const existing = state.entriesByKey.get(`${employee_id}-${dayNum}`);
+
+  // ✅ Variable res vor Deklaration definieren
+  let res = { error: null, data: null };
+
+  if (existing) {
+    res = await supabase
+      .from("planner_entries")
+      .update(payload)
+      .eq("id", existing.id)
+      .select("id")
+      .maybeSingle();
+  } else {
+    res = await supabase
+      .from("planner_entries")
+      .insert(payload)
+      .select("id")
+      .maybeSingle();
+  }
+
+  if (res.error) {
+    console.error("❌ Speichern fehlgeschlagen:", res.error);
+    alert("Fehler beim Speichern!");
+    return;
+  }
+
+  console.log("📦 Gespeichert:", res);
+  els.dlgCell.close();
+  await loadEntries();
+  renderGrid();
+  computeInsights();
+}
+
+async function onDeleteCell(){
+  const employee_id = els.cf_employee_id.value;
+  const dayNum = Number(els.cf_day.value.slice(0,2));
+  const existing = state.entriesByKey.get(`${employee_id}-${dayNum}`);
+  if(!existing){ els.dlgCell.close(); return; }
+  const { error } = await supabase.from("planner_entries").delete().eq("id", existing.id);
+  if(error){ alert("Löschen fehlgeschlagen"); console.error(error); return; }
+  els.dlgCell.close();
+  await loadEntries();
+  renderGrid();
+  computeInsights();
+}
+
+function renderEmpAbtOptions(){
+  els.emp_abt.innerHTML = `<option value="">(keine Abteilung)</option>` + state.abteilungen.map(a=>`<option value="${a.id}">${a.name}</option>`).join("");
+  if(state.abteilung_id) els.emp_abt.value = state.abteilung_id;
+}
+
+function renderEmpShiftOptions(){
+  els.emp_shift.innerHTML = `<option value="">(keine)</option>` + 
+    Array.from(state.shiftCodes)
+      .map(c => `<option value="${c}">${c}</option>`)
+      .join("");
+}
+
+
+async function onCreateEmployee(){
+  const name = els.emp_name.value.trim();
+  const abt = els.emp_abt.value || null;
+  const shift = els.emp_shift.value || null;  // 🧩 hinzugefügt
+  if(!name){ alert("Bitte Name eingeben"); return; }
+  const payload = {
+    firma_id: state.firma_id,
+    abteilung_id: abt,
+    display_name: name,
+    shift_group: shift, // 🧩 jetzt gültig
+    user_id: null,
+    active: true,
+    sort_index: (state.employees.length||0) + 1
+  };
+  const { error } = await supabase.from("planner_employees").insert(payload);
+  if(error){ alert("Anlegen fehlgeschlagen"); console.error(error); return; }
+  els.dlgEmployee.close();
+  await loadEmployees();
+  await loadEntries();
+  renderGrid();
+  computeInsights();
+}
+
+
+// ===== Insights =====
+function computeInsights(){
+  const dim = daysInMonth(state.year, state.month);
+  const today = new Date();
+  const showDay = (today.getFullYear()===state.year && (today.getMonth()+1)===state.month) ? today.getDate() : 1;
+
+  // Coverage am "sichtbaren" Tag (heute oder 1.)
+  const day = showDay;
+  let working = 0; let total = state.employees.length || 0; let vac = 0;
+
+  for(const emp of state.employees){
+    const e = state.entriesByKey.get(`${emp.id}-${day}`);
+    if(e){
+      if(isWorkingCode(e.code)) working++;
+      if(e.code==="U") vac++;
+    }
+  }
+  const coverage = total ? Math.round(working*100/total) : 0;
+  els.insCoverage.textContent = `Belegung heute: ${coverage}% (${working}/${total})`;
+  els.insVac.textContent = `Urlaub heute: ${vac}`;
+
+  // Requests: simple count of 'planner_requests' for month + abteilung
+  els.insRequests.textContent = "Requests: –";
+  fetchRequestsCount().then(n=>{
+    els.insRequests.textContent = `Requests (Monat): ${n}`;
+  });
+
+  els.insTip.textContent = coverage<80
+    ? `Nur ${coverage}% geplant – prüfe Ausfälle oder verlagere Ressourcen.`
+    : coverage>110
+      ? `Überbelegung (${coverage}%) – ggf. Schicht wechseln oder 'Z' setzen.`
+      : `Perfekter Bereich (${coverage}%).`;
+}
+async function fetchRequestsCount(){
+  const start = `${state.year}-${pad(state.month)}-01`;
+  const end = `${state.year}-${pad(state.month)}-${pad(daysInMonth(state.year,state.month))}`;
+  let q = supabase
+    .from("planner_requests")
+    .select("id", { count: "exact", head:true })
+    .eq("firma_id", state.firma_id)
+    .gte("date", start)
+    .lte("date", end);
+  if(state.abteilung_id) q = q.eq("abteilung_id", state.abteilung_id);
+  const { count, error } = await q;
+  if(error){ console.error(error); return 0; }
+  return count || 0;
+}
+function showToast(msg, onConfirm=null, isError=false){
+  // Falls alter Toast existiert → löschen
+  document.querySelectorAll(".toast").forEach(t=>t.remove());
+
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<div>${msg}</div>`;
+
+  if(onConfirm){
+    const ok = document.createElement("button");
+    ok.className = "ok";
+    ok.textContent = "Ja";
+    ok.onclick = ()=>{ toast.remove(); onConfirm(); };
+
+    const cancel = document.createElement("button");
+    cancel.className = "cancel";
+    cancel.textContent = "Nein";
+    cancel.onclick = ()=> toast.remove();
+
+    toast.appendChild(ok);
+    toast.appendChild(cancel);
+  } else if(isError){
+    toast.style.borderLeft = "4px solid #e74c3c";
+  }
+
+  document.body.appendChild(toast);
+  setTimeout(()=> toast.remove(), onConfirm ? 10000 : 3000);
+}
+
+</script>
+</body>
+</html>

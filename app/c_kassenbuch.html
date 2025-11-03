@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TENRA · Kassenbuch 2.0</title>
+  <style>
+    :root { --bg:#0b0c10; --card:#111318; --muted:#8892a6; --txt:#e6edf3; --ok:#19c37d; --warn:#ffcc00; --bad:#ff5c5c; --line:#20242d; }
+    *{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#0b0c10,#0d1117);color:var(--txt);font:14px/1.5 system-ui,Segoe UI,Roboto}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+    main{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+    h2{margin:0 0 12px;font-size:18px}
+    label{display:block;margin:8px 0 4px;color:var(--muted)}
+    input,select,textarea{width:100%;background:#0b0e13;color:var(--txt);border:1px solid #232835;border-radius:10px;padding:10px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    button{background:#1e293b;color:#e6edf3;border:1px solid #2b3345;border-radius:12px;padding:10px 12px;cursor:pointer}
+    button.primary{background:#1f8a5b;border-color:#1f8a5b}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #222735}
+    th{color:var(--muted);font-weight:600;text-align:left}
+    .kachel{display:flex;align-items:center;justify-content:space-between;padding:14px;border:1px solid var(--line);border-radius:12px;background:#0d1218}
+    .kachel span{color:var(--muted)}
+    .flag{font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:999px}
+    .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+<header>
+  <div style="display:flex;gap:10px;align-items:center">
+    <strong>💶 TENRA Kassenbuch</strong>
+    <span id="firmaName" class="pill">–</span>
+    <span id="role" class="pill">role: –</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button id="btnRefresh">⟳ Aktualisieren</button>
+    <button id="btnAdmin" class="hidden">⚙️ Admin</button>
+  </div>
+</header>
+
+<main>
+  <!-- Journal / Neue Buchung -->
+  <section class="card">
+    <h2>Neue Buchung</h2>
+    <div class="row">
+      <div>
+        <label>Datum</label>
+        <input type="date" id="inDatum">
+      </div>
+      <div>
+        <label>Art</label>
+        <select id="inArt">
+          <option value="einnahme">Einnahme</option>
+          <option value="ausgabe">Ausgabe</option>
+          <option value="transfer">Transfer</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row3">
+      <div>
+        <label>Brutto (€)</label>
+        <input type="number" step="0.01" id="inBrutto" placeholder="0,00">
+      </div>
+      <div>
+        <label>Zahlart</label>
+        <select id="inZahlart">
+          <option>Bar</option><option>EC</option><option>SumUp</option><option>Überweisung</option><option>PayPal</option>
+        </select>
+      </div>
+      <div>
+        <label>Region</label>
+        <select id="inRegion">
+          <option value="DE">DE</option>
+          <option value="EU_RC">EU (Reverse Charge)</option>
+          <option value="Drittland">Drittland</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Kategorie</label>
+        <select id="inKategorie"></select>
+      </div>
+      <div>
+        <label>Gegenkonto (optional)</label>
+        <input id="inGegenkonto" placeholder="z. B. Büromaterial / Erlöse 7%">
+      </div>
+    </div>
+
+    <div class="row" id="transferRow" class="hidden" style="display:none">
+      <div>
+        <label>Konto (Quelle)</label>
+        <input id="inQuelle" placeholder="Kasse / Bank">
+      </div>
+      <div>
+        <label>Konto (Ziel)</label>
+        <input id="inZiel" placeholder="Bank / Kasse">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Rechnungs-Nr. (optional)</label>
+        <input id="inReNr" placeholder="RE-2025-001">
+      </div>
+      <div>
+        <label>Beleg (PDF/JPG, optional)</label>
+        <input type="file" id="inBeleg" accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+    </div>
+
+    <div>
+      <label>Notiz</label>
+      <textarea id="inNotiz" rows="2" placeholder="Kurzbeschreibung…"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="primary" id="btnSave">+ Buchung speichern</button>
+      <span id="saveMsg" class="flag"></span>
+    </div>
+  </section>
+
+  <!-- Dashboard rechts -->
+  <aside class="card">
+    <h2>Übersicht</h2>
+    <div class="kachel"><span>Aktueller Kassenbestand</span><strong id="kassenstand">–</strong></div>
+    <div class="kachel" style="margin-top:10px"><span>Belege offen</span><strong id="cntMissing">–</strong></div>
+    <div class="kachel" style="margin-top:10px"><span>Letzte Buchung</span><strong id="lastEntry">–</strong></div>
+  </aside>
+
+  <!-- Liste der Buchungen -->
+  <section class="card" style="grid-column:1 / span 2">
+    <h2>Letzte Buchungen</h2>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Datum</th><th>Art</th><th>Kategorie</th><th>Brutto</th><th>Zahlart</th><th>Region</th><th>Re-Nr.</th><th>Beleg</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+
+  <!-- Admin Panel -->
+  <section class="card hidden" id="adminPanel" style="grid-column:1 / span 2">
+    <h2>Admin · Settings & Kategorien</h2>
+    <div class="row">
+      <div class="card" style="background:#0b0e13">
+        <h3>Settings</h3>
+        <div id="settingsList"></div>
+        <div class="row" style="margin-top:10px">
+          <input id="newSetKey" placeholder="Key (z.B. Steuer_DE_Standard)">
+          <input id="newSetVal" placeholder="Value (z.B. 0.19)">
+        </div>
+        <div style="margin-top:8px"><button id="btnAddSetting">+ Setting</button></div>
+      </div>
+      <div class="card" style="background:#0b0e13">
+        <h3>Kategorien</h3>
+        <table style="width:100%"><thead><tr><th>Name</th><th>Steuersatz</th></tr></thead><tbody id="catList"></tbody></table>
+        <div class="row" style="margin-top:10px">
+          <input id="newCatName" placeholder="z.B. Getränke">
+          <input id="newCatRate" placeholder="0.07">
+        </div>
+        <div style="margin-top:8px"><button id="btnAddCat">+ Kategorie</button></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const STORAGE_BUCKET = "kassenbuch";
+
+let state = { user:null, firma_id:null, role:null, settings:{}, cats:[] };
+
+// ====== BOOT ======
+window.addEventListener("DOMContentLoaded", async () => {
+  // Session holen (wie Dashboard)
+  let { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    // Falls keine Session im Speicher → Redirect oder Hinweis
+    alert("Nicht eingeloggt. Bitte zuerst im Dashboard anmelden.");
+    window.location.href = "/index.html";
+    return;
+  }
+
+  state.user = session.user;
+
+  // Firma + Rolle laden
+  const { data: membership, error } = await supabase
+    .from("firmen_user")
+    .select("firma_id, role, status, firmen(name)")
+    .eq("user_id", state.user.id)
+    .eq("status", "accepted")
+    .maybeSingle();
+
+  if (error || !membership) {
+    alert("Keine Firmenzuordnung gefunden.");
+    return;
+  }
+
+  state.firma_id = membership.firma_id;
+  state.role = membership.role;
+  document.getElementById("firmaName").textContent = membership.firmen?.name ?? state.firma_id;
+  document.getElementById("role").textContent = "role: " + state.role;
+  if (["admin","owner"].includes(state.role)) document.getElementById("btnAdmin").classList.remove("hidden");
+
+  // UI Events
+  document.getElementById("btnRefresh").onclick = bootReload;
+  document.getElementById("btnAdmin").onclick = () => document.getElementById("adminPanel").classList.toggle("hidden");
+  document.getElementById("inArt").onchange = toggleTransfer;
+  document.getElementById("btnSave").onclick = saveEntry;
+  document.getElementById("btnAddSetting").onclick = addSetting;
+  document.getElementById("btnAddCat").onclick = addCategory;
+
+  // Datum
+  document.getElementById("inDatum").valueAsDate = new Date();
+
+  await bootReload();
+});
+
+ 
+
+  async function bootReload(){
+    await loadSettings();
+    await loadCategories();
+    await updateKassenstand();
+    await loadEntries();
+    updateMissingBelege();
+  }
+
+  // ====== LOAD SETTINGS ======
+  async function loadSettings(){
+    const { data, error } = await supabase.from("kassenbuch_settings")
+      .select("key,value")
+      .eq("firma_id", state.firma_id);
+    if (error) { console.error(error); return; }
+    state.settings = Object.fromEntries((data||[]).map(x => [x.key, x.value]));
+    // render admin list
+    const box = document.getElementById("settingsList");
+    box.innerHTML = "";
+    Object.entries(state.settings).forEach(([k,v]) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.style.marginBottom = "6px";
+      row.innerHTML = `<input value="${k}" disabled><input value="${v}" data-key="${k}">`;
+      row.querySelector("input[data-key]").addEventListener("change", async (e)=>{
+        await supabase.from("kassenbuch_settings").update({ value:e.target.value })
+          .eq("firma_id", state.firma_id).eq("key", k);
+      });
+      box.appendChild(row);
+    });
+  }
+  async function addSetting(){
+    if (!["admin","owner"].includes(state.role)) return alert("Keine Rechte.");
+    const k = document.getElementById("newSetKey").value.trim();
+    const v = document.getElementById("newSetVal").value.trim();
+    if(!k||!v) return;
+    await supabase.from("kassenbuch_settings").insert({ firma_id: state.firma_id, key:k, value:v });
+    document.getElementById("newSetKey").value = ""; document.getElementById("newSetVal").value = "";
+    await loadSettings();
+  }
+
+  // ====== CATEGORIES ======
+  async function loadCategories(){
+    const { data, error } = await supabase.from("kassenbuch_kategorien")
+      .select("id,name,steuersatz")
+      .eq("firma_id", state.firma_id)
+      .order("name");
+    if (error) { console.error(error); return; }
+    state.cats = data || [];
+    // fill select
+    const sel = document.getElementById("inKategorie");
+    sel.innerHTML = `<option value="">—</option>` + state.cats.map(c => `<option value="${c.id}">${c.name} (${(c.steuersatz*100).toFixed(0)}%)</option>`).join("");
+    // admin list
+    const tbody = document.getElementById("catList"); tbody.innerHTML = "";
+    state.cats.forEach(c=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${c.name}</td><td>${c.steuersatz}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  async function addCategory(){
+    if (!["admin","owner"].includes(state.role)) return alert("Keine Rechte.");
+    const name = document.getElementById("newCatName").value.trim();
+    const rate = parseFloat(document.getElementById("newCatRate").value);
+    if(!name||isNaN(rate)) return;
+    await supabase.from("kassenbuch_kategorien").insert({
+      firma_id: state.firma_id, name, steuersatz: rate, created_by: state.user.id
+    });
+    document.getElementById("newCatName").value=""; document.getElementById("newCatRate").value="";
+    await loadCategories();
+  }
+
+  // ====== KASSENSTAND ======
+  async function updateKassenstand(){
+    const { data, error } = await supabase.from("v_kassenstand").select("*").eq("firma_id", state.firma_id).maybeSingle();
+    if (error) { console.warn(error); }
+    const val = data?.aktueller_kassenbestand ?? 0;
+    document.getElementById("kassenstand").textContent = euro(val);
+  }
+
+
+
+  function toggleTransfer(){
+    const art = document.getElementById("inArt").value;
+    document.getElementById("transferRow").style.display = (art === "transfer") ? "grid" : "none";
+  }
+
+  async function saveEntry(){
+    try{
+      const datum = (document.getElementById("inDatum").value || "").trim();
+      const art = document.getElementById("inArt").value;
+      const brutto = parseFloat(document.getElementById("inBrutto").value);
+      const kategorie_id = document.getElementById("inKategorie").value || null;
+      const zahlart = document.getElementById("inZahlart").value;
+      const region = document.getElementById("inRegion").value;
+      const rechnungs_nr = document.getElementById("inReNr").value.trim() || null;
+      const gegenkonto = document.getElementById("inGegenkonto").value.trim() || null;
+      const konto_quelle = document.getElementById("inQuelle").value.trim() || null;
+      const konto_ziel = document.getElementById("inZiel").value.trim() || null;
+      const notiz = document.getElementById("inNotiz").value.trim() || null;
+
+      if(!datum || !art || isNaN(brutto)) return msg("Bitte Datum, Art, Brutto prüfen.", "bad");
+
+      // Steuersatz bestimmen: Region > Kategorie > Settings
+      let steuersatz = 0;
+      if (region === "DE"){
+        if (kategorie_id){
+          const cat = state.cats.find(c => c.id === kategorie_id);
+          steuersatz = Number(cat?.steuersatz ?? 0);
+        } else {
+          steuersatz = Number(state.settings?.Steuer_DE_Standard ?? 0.19);
+        }
+      } else {
+        steuersatz = 0; // EU_RC & Drittland steuerfrei
+      }
+
+      // SumUp Gebühren
+      const feePct = Number(state.settings?.Fee_SumUp_Prozent ?? 0);
+      const feeFix = Number(state.settings?.Fee_SumUp_Fix ?? 0);
+      const gebuehr = (zahlart === "SumUp") ? round(brutto*feePct + feeFix) : 0;
+
+      const netto = round(brutto / (1 + steuersatz));
+      const steuerbetrag = round(brutto - netto);
+
+      // optional: Beleg hochladen
+  // optional: Beleg hochladen (robuster Upload)
+let beleg_id = null;
+const file = document.getElementById("inBeleg").files[0];
+if (file) {
+  const safeName = encodeURIComponent(file.name.replace(/\s+/g, "_"));
+  const path = `${state.firma_id}/${new Date().toISOString().slice(0,10)}_${crypto.randomUUID()}_${safeName}`;
+
+  const { error: upErr } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, { 
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+      cacheControl: "3600"
+    });
+
+  if (upErr) {
+    console.error("Upload error:", upErr);
+    msg("Beleg-Upload fehlgeschlagen (kein Stop).", "warn");
+  } else {
+    const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+    if (!pub?.publicUrl) {
+      console.error("Public URL fehlt für:", path);
+      msg("Beleg-URL konnte nicht erstellt werden.", "bad");
+    } else {
+      const { data: bel, error: belErr } = await supabase
+        .from("kassenbuch_belege")
+        .insert({
+          firma_id: state.firma_id,
+          file_url: pub.publicUrl,
+          file_name: file.name,
+          uploaded_by: state.user.id
+        })
+        .select("id")
+        .single();
+
+      if (belErr) {
+        console.error("Insert kassenbuch_belege error:", belErr);
+        msg("Beleg konnte nicht verknüpft werden.", "bad");
+      } else {
+        beleg_id = bel.id; // ✅ jetzt ist der Beleg verknüpft
+      }
+    }
+  }
+}
+
+
+      // Insert
+      const { error } = await supabase.from("kassenbuch_entries").insert({
+        firma_id: state.firma_id,
+        created_by: state.user.id,
+        datum, art, brutto,
+        gegenkonto, kategorie_id, zahlart,
+        konto_quelle, konto_ziel,
+        rechnungs_nr, beleg_id, region, notiz,
+        steuersatz, steuerbetrag, netto, gebuehr,
+        validierung: beleg_id ? "ok" : "missing_receipt"
+      });
+      if (error){ console.error(error); return msg("Fehler beim Speichern.", "bad"); }
+
+      // Reset & reload
+      document.getElementById("inBrutto").value = "";
+      document.getElementById("inReNr").value = "";
+      document.getElementById("inBeleg").value = "";
+      document.getElementById("inNotiz").value = "";
+      msg("Gespeichert.", "ok");
+      await updateKassenstand();
+      await loadEntries();
+      await updateMissingBelege();
+    }catch(e){ console.error(e); msg("Unerwarteter Fehler.", "bad"); }
+  }
+
+  async function updateMissingBelege(){
+    const { data, error } = await supabase.from("kassenbuch_entries")
+      .select("id").eq("firma_id", state.firma_id).is("beleg_id", null);
+    document.getElementById("cntMissing").textContent = error ? "—" : (data?.length ?? 0);
+  }
+
+  // ====== UTIL ======
+  const euro = n => new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(Number(n||0));
+  const round = n => Math.round((n + Number.EPSILON) * 100) / 100;
+  function msg(t, type="ok"){ const el = document.getElementById("saveMsg"); el.textContent=t; el.className="flag " + type; setTimeout(()=>{el.textContent="";}, 2500); }
+  const iconArt = a => a==="einnahme"?"🟢":a==="ausgabe"?"🔴":"🔁";
+
+
+  // ====== DETAIL TOOLTIP für Buchungen ======
+let tooltip;
+function createTooltip() {
+  tooltip = document.createElement("div");
+  tooltip.id = "entryTooltip";
+  Object.assign(tooltip.style, {
+    position: "absolute",
+    background: "#0d1218",
+    border: "1px solid #2a2f3a",
+    borderRadius: "10px",
+    padding: "10px 14px",
+    fontSize: "13px",
+    color: "#e6edf3",
+    boxShadow: "0 10px 30px rgba(0,0,0,.4)",
+    zIndex: 9999,
+    display: "none",
+    maxWidth: "280px",
+    pointerEvents: "none",
+    transition: "opacity .15s ease",
+  });
+  document.body.appendChild(tooltip);
+}
+createTooltip();
+
+function showTooltip(e, html) {
+  tooltip.innerHTML = html;
+  tooltip.style.left = e.pageX + 15 + "px";
+  tooltip.style.top = e.pageY + 15 + "px";
+  tooltip.style.display = "block";
+  tooltip.style.opacity = 1;
+}
+function hideTooltip() {
+  tooltip.style.display = "none";
+  tooltip.style.opacity = 0;
+}
+
+// Nach dem Laden der Tabelle:
+// Nach dem Laden der Tabelle:
+async function loadEntries() {
+  const { data, error } = await supabase
+    .from("kassenbuch_entries")
+    .select("id, datum, art, brutto, zahlart, region, rechnungs_nr, beleg_id, notiz, gegenkonto, konto_quelle, konto_ziel, steuersatz, steuerbetrag, netto, gebuehr, kassenbuch_kategorien(name)")
+    .eq("firma_id", state.firma_id)
+    .order("datum", { ascending: true }) // zuerst alle aufsteigend laden
+    .limit(200);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const tb = document.getElementById("rows");
+  tb.innerHTML = "";
+
+  if (!data?.length) {
+    document.getElementById("lastEntry").textContent = "—";
+    return;
+  }
+
+  // ✅ 1️⃣ Neueste Buchung anhand Datum bestimmen
+  let newest = data[0];
+  for (const entry of data) {
+    if (new Date(entry.datum) > new Date(newest.datum)) {
+      newest = entry;
+    } else if (
+      new Date(entry.datum).getTime() === new Date(newest.datum).getTime()
+    ) {
+      // gleiche Datum → unterste (also spätere in Liste)
+      newest = entry;
+    }
+  }
+
+  // ✅ 2️⃣ Anzeige im Dashboard aktualisieren
+  document.getElementById("lastEntry").textContent =
+    `${newest.datum} · ${newest.art} · ${euro(newest.brutto)}`;
+
+  // ✅ 3️⃣ Tabelle aufbauen (älteste oben, neueste unten)
+  for (const r of data) {
+    const tr = document.createElement("tr");
+   const belegLink = r.beleg_id
+  ? `<a href="#" class="belegLink" data-id="${r.beleg_id}" style="color:#19c37d;text-decoration:underline;cursor:pointer;">Ja</a>`
+  : `<span class='warn'>Nein</span>`;
+
+
+    tr.innerHTML = `
+      <td>${r.datum}</td>
+      <td>${iconArt(r.art)} ${r.art}</td>
+      <td>${r.kassenbuch_kategorien?.name ?? "—"}</td>
+      <td>${euro(r.brutto)}</td>
+      <td>${r.zahlart ?? "—"}</td>
+      <td>${r.region ?? "DE"}</td>
+      <td>${r.rechnungs_nr ?? "—"}</td>
+      <td>${belegLink}</td>
+    `;
+
+    // Tooltip anzeigen
+    tr.addEventListener("mouseenter", (e) => {
+      const info = `
+        <strong>${iconArt(r.art)} ${r.art.toUpperCase()}</strong><br>
+        <small>${r.datum}</small>
+        <hr style="border:0;border-top:1px solid #222;margin:6px 0">
+        ${
+          r.art === "transfer"
+            ? `<b>Quelle:</b> ${r.konto_quelle || "–"}<br><b>Ziel:</b> ${r.konto_ziel || "–"}<br><br>`
+            : r.gegenkonto
+            ? `<b>Gegenkonto:</b> ${r.gegenkonto}<br><br>`
+            : ""
+        }
+        <b>Kategorie:</b> ${r.kassenbuch_kategorien?.name ?? "–"}<br>
+        <b>Brutto:</b> ${euro(r.brutto)}<br>
+        <b>Netto:</b> ${euro(r.netto)}<br>
+        <b>Steuer (${(r.steuersatz * 100).toFixed(0)}%):</b> ${euro(
+        r.steuerbetrag
+      )}<br>
+        <b>Gebühr:</b> ${r.gebuehr ? euro(r.gebuehr) : "–"}<br>
+        <b>Zahlart:</b> ${r.zahlart ?? "–"}<br>
+        <b>Region:</b> ${r.region ?? "–"}<br>
+        <b>Rechnungs-Nr.:</b> ${r.rechnungs_nr ?? "–"}<br>
+        <b>Beleg vorhanden:</b> ${belegLink}<br>
+        ${
+          r.notiz
+            ? `<hr style="border:0;border-top:1px solid #222;margin:6px 0"><i>${r.notiz}</i>`
+            : ""
+        }
+      `;
+      showTooltip(e, info);
+    });
+
+    
+
+    tr.addEventListener("mousemove", (e) => {
+      tooltip.style.left = e.pageX + 15 + "px";
+      tooltip.style.top = e.pageY - 200 + "px";
+    });
+    tr.addEventListener("mouseleave", hideTooltip);
+    tb.appendChild(tr);
+  }
+
+  // Klick auf "Beleg: Ja" → Datei öffnen (nachdem alle Zeilen eingefügt wurden)
+document.querySelectorAll(".belegLink").forEach(link => {
+  link.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const belegId = e.target.dataset.id;
+    const { data, error } = await supabase
+      .from("kassenbuch_belege")
+      .select("file_url, file_name")
+      .eq("id", belegId)
+      .maybeSingle();
+
+    if (error || !data?.file_url) {
+      alert("Beleg konnte nicht geladen werden.");
+      console.error(error);
+      return;
+    }
+
+    // Öffnet Beleg in neuem Tab
+    window.open(data.file_url, "_blank");
+
+    // (Optional für Download:)
+    // const a = document.createElement("a");
+    // a.href = data.file_url;
+    // a.download = data.file_name;
+    // a.click();
+  });
+});
+
+}
+
+
+</script>
+</body>
+</html>

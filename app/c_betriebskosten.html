@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TENRA · Betriebskosten</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --bg2:#0d1117; --card:#111318; --line:#1a1f2a;
+      --txt:#e6edf3; --muted:#9aa4b2; --ok:#19c37d; --warn:#ffcc00; --bad:#ff5c5c; --pri:#2bd67b;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--txt);
+         font:14px/1.55 system-ui,Segoe UI,Roboto,Inter,sans-serif}
+    header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;
+      padding:14px 18px;border-bottom:1px solid var(--line);backdrop-filter:blur(8px);
+      background:color-mix(in hsl, var(--bg) 70%, transparent)}
+    .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.3px}
+    .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#3cff8f,#0aa458)}
+
+    .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
+
+    .card{background:linear-gradient(180deg,var(--card),#0e1218);border:1px solid var(--line);
+      border-radius:14px; padding:16px}
+
+    .grid{display:grid;gap:12px}
+    .grid.cols-2{grid-template-columns:1fr 1fr}
+    .grid.cols-3{grid-template-columns:repeat(3,1fr)}
+    .row{display:flex;gap:10px;align-items:center}
+
+    .btn{appearance:none;border:1px solid var(--line);background:#141821;color:var(--txt);
+      padding:10px 12px;border-radius:10px;cursor:pointer;transition:transform .05s ease;
+      font-weight:600}
+    .btn:active{transform:translateY(1px)}
+    .btn.pri{background:linear-gradient(135deg,#2bd67b,#0fa85c);border:none;color:#08120b}
+    .btn.ghost{background:transparent}
+    .btn.warn{background:#332b00;border-color:#4a3e00;color:#ffd54d}
+
+    .inp{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);
+      background:#0b0f15;color:var(--txt)}
+    label{font-size:12px;color:var(--muted)}
+
+    .stepper{display:flex;gap:10px;flex-wrap:wrap}
+    .step{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:11px;
+      border:1px solid var(--line);cursor:pointer;background:#0b0f15}
+    .step[data-active="1"]{outline:2px solid #2bd67b55}
+    .badge{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+    .badge.ok{color:#052815;background:#112918;border-color:#173322}
+    .badge.warn{color:#332700;background:#2a2200;border-color:#403300}
+    .badge.err{color:#2d0909;background:#2a0c0c;border-color:#3a1414}
+
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+    .table th{color:var(--muted);font-weight:600}
+
+    .kpi{display:flex;gap:12px;flex-wrap:wrap}
+    .k{flex:1 1 160px;background:#0a1016;border:1px solid var(--line);padding:12px;border-radius:12px}
+    .k b{font-size:18px}
+
+    .toast{position:fixed;right:16px;bottom:16px;display:flex;gap:10px;align-items:center;padding:12px 14px;
+      border:1px solid var(--line);background:#0e141c;border-radius:12px;box-shadow:0 6px 30px #0005;opacity:0;transform:translateY(10px);
+      transition:all .2s ease}
+    .toast.show{opacity:1;transform:translateY(0)}
+
+    .section{display:none}
+    .section.show{display:block}
+    .hr{height:1px;background:var(--line);margin:10px 0}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="dot"></span> TENRA <span class="pill">Betriebskosten</span></div>
+    <div style="margin-left:auto" id="userBox" class="pill">–</div>
+  </header>
+
+  <div class="wrap">
+    <!-- Stepper -->
+    <div class="card">
+      <div class="stepper" id="stepper"></div>
+    </div>
+
+    <div class="grid" style="margin-top:12px">
+      <!-- SECTION: Perioden -->
+      <section id="sec-perioden" class="card section show">
+        <h3>1) Periode</h3>
+        <div class="grid cols-3">
+          <div>
+            <label>Bezeichnung</label>
+            <input class="inp" id="per-name" placeholder="z. B. Abrechnung 2025" />
+          </div>
+          <div>
+            <label>Start</label>
+            <input class="inp" id="per-start" type="date" />
+          </div>
+          <div>
+            <label>Ende</label>
+            <input class="inp" id="per-ende" type="date" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn pri" id="btn-per-create">Periode anlegen</button>
+          <button class="btn ghost" id="btn-per-reload">Aktualisieren</button>
+        </div>
+        <div class="hr"></div>
+        <table class="table" id="per-table">
+          <thead><tr><th>Bezeichnung</th><th>Zeitraum</th><th>Status</th><th>Aktionen</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- SECTION: Basis/Snapshots -->
+      <section id="sec-basis" class="card section">
+        <h3>2) Basis einfrieren</h3>
+        <p class="muted">Wir ziehen m², Personen & Verbräuche (aus Ablesungen) als Snapshot für diese Periode.
+        </p>
+        <div class="row">
+          <button class="btn pri" id="btn-basis">Basis-Snapshots erzeugen</button>
+          <span class="badge" id="basis-state">–</span>
+        </div>
+        <div class="hr"></div>
+        <div class="kpi">
+          <div class="k"><div>Summe m²</div><b id="kpi-m2">–</b></div>
+          <div class="k"><div>Summe Personen</div><b id="kpi-pers">–</b></div>
+          <div class="k"><div>Summe Verbrauch</div><b id="kpi-verbr">–</b></div>
+        </div>
+      </section>
+
+      <!-- SECTION: Ablesungen -->
+      <section id="sec-ablesungen" class="card section">
+        <h3>3) Ablesungen</h3>
+        <div class="grid cols-3">
+          <div>
+            <label>Zähler-ID</label>
+            <input class="inp" id="abl-zaehler" placeholder="UUID" />
+          </div>
+          <div>
+            <label>Datum</label>
+            <input class="inp" id="abl-datum" type="date" />
+          </div>
+          <div>
+            <label>Stand</label>
+            <input class="inp" id="abl-stand" type="number" step="0.001" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btn-abl-add">Ablesung speichern</button>
+          <button class="btn ghost" id="btn-abl-list">Liste aktualisieren</button>
+        </div>
+        <div class="hr"></div>
+        <table class="table" id="abl-table">
+          <thead><tr><th>Datum</th><th>Zähler</th><th>Stand</th><th>Periode</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- SECTION: Belege -->
+      <section id="sec-belege" class="card section">
+        <h3>4) Belege / Kosten</h3>
+        <div class="grid cols-3">
+          <div>
+            <label>Kostenart-ID</label>
+            <input class="inp" id="bel-kostenart" placeholder="UUID" />
+          </div>
+          <div>
+            <label>Bruttobetrag (€)</label>
+            <input class="inp" id="bel-brutto" type="number" step="0.01" />
+          </div>
+          <div>
+            <label>Belegdatum</label>
+            <input class="inp" id="bel-datum" type="date" />
+          </div>
+        </div>
+        <div class="grid cols-3" style="margin-top:10px">
+          <div>
+            <label>Lieferant</label>
+            <input class="inp" id="bel-lieferant" />
+          </div>
+          <div>
+            <label>Rechnungsnummer</label>
+            <input class="inp" id="bel-rnr" />
+          </div>
+          <div>
+            <label>Datei (optional URL)</label>
+            <input class="inp" id="bel-url" placeholder="/storage/..." />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btn-bel-add">Beleg buchen</button>
+          <button class="btn ghost" id="btn-bel-list">Liste aktualisieren</button>
+        </div>
+        <div class="hr"></div>
+        <table class="table" id="bel-table">
+          <thead><tr><th>Datum</th><th>Kostenart</th><th>Brutto</th><th>Lieferant</th><th>Re-Nr</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- SECTION: Verteilung & Abrechnung -->
+      <section id="sec-abrechnung" class="card section">
+        <h3>5) Verteilung & Abrechnung</h3>
+        <div class="row">
+          <button class="btn pri" id="btn-recalc">Neu berechnen</button>
+          <button class="btn warn" id="btn-finalize">Periode abschließen</button>
+          <span class="badge" id="calc-state">–</span>
+        </div>
+        <div class="hr"></div>
+        <table class="table" id="abr-table">
+          <thead><tr><th>Einheit</th><th>Summe Kosten</th><th>Vorausz.</th><th>Nachzahlung</th><th>Status</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"><span>•</span><div id="toast-msg">Hinweis</div></div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // TODO: trage deine Supabase-URL & Anon-Key ein (oder lasse wie im Projekt vorhanden über window.supabase)
+    const supabase = window.supabase || createClient("https://YOUR-PROJECT.supabase.co", "YOUR-ANON-KEY");
+
+    const state = {
+      user: null,
+      firma_id: null,
+      role: null,
+      periode: null,
+      steps: [
+        { id:'sec-perioden', name:'Periode', badge:'–' },
+        { id:'sec-basis', name:'Basis', badge:'–' },
+        { id:'sec-ablesungen', name:'Ablesungen', badge:'–' },
+        { id:'sec-belege', name:'Belege', badge:'–' },
+        { id:'sec-abrechnung', name:'Abrechnung', badge:'–' },
+      ]
+    };
+
+    // ----------------- Helpers -----------------
+    const qs = s=>document.querySelector(s); const qsa=s=>[...document.querySelectorAll(s)];
+    function toast(msg){ const t=qs('#toast'); qs('#toast-msg').textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+    function fmtEUR(n){ if(n===null||n===undefined) return '–'; return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n); }
+
+    function setActiveSection(id){ qsa('.section').forEach(s=>s.classList.remove('show')); qs('#'+id).classList.add('show');
+      qsa('.step').forEach(el=>el.dataset.active = (el.dataset.to===id?"1":"0")); }
+
+    function renderStepper(){
+      const box = qs('#stepper'); box.innerHTML='';
+      state.steps.forEach((s,i)=>{
+        const el=document.createElement('div'); el.className='step'; el.dataset.to=s.id; el.dataset.active=i===0?"1":"0";
+        el.innerHTML=`<span class="badge">${i+1}</span> ${s.name} <span class="badge">${s.badge}</span>`;
+        el.onclick=()=>setActiveSection(s.id); box.appendChild(el);
+      });
+    }
+
+    async function loadUserFirma(){
+      const { data: { user } } = await supabase.auth.getUser();
+      state.user = user;
+      qs('#userBox').textContent = user? (user.email||'angemeldet') : 'Gast';
+
+      // Firma & Rolle laden
+      if(user){
+        const { data: fu, error } = await supabase
+          .from('firmen_user')
+          .select('firma_id, role, status')
+          .eq('user_id', user.id)
+          .eq('status','accepted')
+          .maybeSingle();
+        if(error) console.warn(error);
+        state.firma_id = fu?.firma_id || null; state.role = fu?.role || null;
+      }
+    }
+
+    // ----------------- Perioden -----------------
+    async function listPerioden(){
+      const { data, error } = await supabase
+        .from('bk_periode')
+        .select('*')
+        .eq('firma_id', state.firma_id)
+        .order('start', { ascending:false });
+      if(error){ toast('Perioden laden fehlgeschlagen'); return; }
+      const tb = qs('#per-table tbody'); tb.innerHTML='';
+      (data||[]).forEach(p=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${p.bezeichnung||'–'}</td>
+          <td>${p.start}–${p.ende}</td>
+          <td>${p.abgeschlossen?'<span class="badge ok">abgeschlossen</span>':'<span class="badge warn">offen</span>'}</td>
+          <td>
+            <button class="btn" data-id="${p.id}">Auswählen</button>
+          </td>`;
+        tr.querySelector('button').onclick=()=>selectPeriode(p);
+        tb.appendChild(tr);
+      });
+    }
+
+    async function createPeriode(){
+      const bezeichnung = qs('#per-name').value.trim();
+      const start = qs('#per-start').value; const ende = qs('#per-ende').value;
+      if(!start||!ende){ toast('Start/Ende fehlt'); return; }
+      const { error } = await supabase.from('bk_periode').insert({ firma_id: state.firma_id, bezeichnung, start, ende });
+      if(error){ toast('Periode anlegen fehlgeschlagen'); console.warn(error); return; }
+      toast('Periode angelegt'); listPerioden();
+    }
+
+    async function selectPeriode(p){ state.periode=p; toast('Periode ausgewählt');
+      // quick load of downstream tables
+      await Promise.all([updateBasisKPI(), listAblesungen(), listBelege(), listAbrechnungen()]);
+      setActiveSection('sec-basis');
+    }
+
+    // ----------------- Basis / Snapshots -----------------
+    async function runSnapshot(){
+      if(!state.periode){ toast('Bitte Periode wählen'); return; }
+      // rpc: bk_snapshot_basis(p_firma uuid, p_periode uuid)
+      const { error } = await supabase.rpc('bk_snapshot_basis', { p_firma: state.firma_id, p_periode: state.periode.id });
+      if(error){ toast('Snapshot fehlgeschlagen (prüfe RPC)'); console.warn(error); return; }
+      toast('Basis-Snapshots erzeugt'); updateBasisKPI();
+    }
+
+    async function updateBasisKPI(){
+      if(!state.periode) return;
+      const pid = state.periode.id, fid = state.firma_id;
+      const [f,p,v] = await Promise.all([
+        supabase.from('bk_basis_flaeche').select('m2').eq('firma_id',fid).eq('periode_id',pid),
+        supabase.from('bk_basis_personen').select('personen').eq('firma_id',fid).eq('periode_id',pid),
+        supabase.from('bk_basis_verbrauch').select('verbrauch_einheit').eq('firma_id',fid).eq('periode_id',pid),
+      ]);
+      const sum = (rows, key)=> (rows?.data||[]).reduce((a,c)=>a+Number(c[key]||0),0);
+      qs('#kpi-m2').textContent = sum(f,'m2').toLocaleString('de-DE');
+      qs('#kpi-pers').textContent = sum(p,'personen').toLocaleString('de-DE');
+      qs('#kpi-verbr').textContent = sum(v,'verbrauch_einheit').toLocaleString('de-DE');
+      state.steps[1].badge = (sum(f,'m2')>0||sum(p,'personen')>0||sum(v,'verbrauch_einheit')>0)?'ok':'–';
+      renderStepper();
+    }
+
+    // ----------------- Ablesungen -----------------
+    async function addAblesung(){
+      if(!state.periode){ toast('Periode wählen'); return; }
+      const row = {
+        firma_id: state.firma_id,
+        zaehler_id: qs('#abl-zaehler').value.trim(),
+        ablesedatum: qs('#abl-datum').value,
+        stand: Number(qs('#abl-stand').value||0),
+        periode_id: state.periode.id
+      }
+      if(!row.zaehler_id||!row.ablesedatum){ toast('Zähler/Datum fehlt'); return; }
+      const { error } = await supabase.from('bk_ablesungen').insert(row);
+      if(error){ toast('Ablesung fehlgeschlagen'); console.warn(error); return; }
+      toast('Ablesung gespeichert'); listAblesungen();
+    }
+
+    async function listAblesungen(){
+      if(!state.periode) return;
+      const { data, error } = await supabase
+        .from('bk_ablesungen')
+        .select('ablesedatum, stand, periode_id, zaehler_id')
+        .eq('firma_id', state.firma_id)
+        .eq('periode_id', state.periode.id)
+        .order('ablesedatum', { ascending:false });
+      if(error){ console.warn(error); return; }
+      const tb = qs('#abl-table tbody'); tb.innerHTML='';
+      (data||[]).forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.ablesedatum}</td><td>${r.zaehler_id}</td><td>${r.stand}</td><td>${r.periode_id.slice(0,8)}…</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    // ----------------- Belege -----------------
+    async function addBeleg(){
+      if(!state.periode){ toast('Periode wählen'); return; }
+      const row = {
+        firma_id: state.firma_id,
+        periode_id: state.periode.id,
+        kostenart_id: qs('#bel-kostenart').value.trim(),
+        brutto: Number(qs('#bel-brutto').value||0),
+        belegdatum: qs('#bel-datum').value||null,
+        lieferant: qs('#bel-lieferant').value||null,
+        rechnungsnr: qs('#bel-rnr').value||null,
+        nettobetrag: 0, // optional – falls du Netto eingibst, hier berechnen
+        umsatzsteuer_prozent: 0,
+        bemerkung: null,
+        date_url: qs('#bel-url').value||null
+      };
+      if(!row.kostenart_id || !row.brutto){ toast('Kostenart & Betrag nötig'); return; }
+      const { error } = await supabase.from('bk_belege').insert(row);
+      if(error){ toast('Beleg fehlgeschlagen'); console.warn(error); return; }
+      toast('Beleg gebucht'); listBelege();
+    }
+
+    async function listBelege(){
+      if(!state.periode) return;
+      const { data, error } = await supabase
+        .from('bk_belege')
+        .select('belegdatum, kostenart_id, brutto, lieferant, rechnungsnr')
+        .eq('firma_id', state.firma_id)
+        .eq('periode_id', state.periode.id)
+        .order('belegdatum', { ascending:false });
+      if(error){ console.warn(error); return; }
+      const tb = qs('#bel-table tbody'); tb.innerHTML='';
+      (data||[]).forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.belegdatum||'–'}</td><td>${r.kostenart_id.slice(0,8)}…</td><td>${fmtEUR(r.brutto)}</td><td>${r.lieferant||'–'}</td><td>${r.rechnungsnr||'–'}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    // ----------------- Verteilung & Abrechnung -----------------
+    async function recalc(){
+      if(!state.periode){ toast('Periode wählen'); return; }
+      // 1) allocate 2) settlements
+      const a = await supabase.rpc('bk_allocate', { p_firma: state.firma_id, p_periode: state.periode.id });
+      if(a.error){ toast('Verteilung fehlgeschlagen (RPC prüfen)'); console.warn(a.error); return; }
+      const b = await supabase.rpc('bk_build_settlements', { p_firma: state.firma_id, p_periode: state.periode.id });
+      if(b.error){ toast('Abrechnung bilden fehlgeschlagen'); console.warn(b.error); return; }
+      qs('#calc-state').textContent = 'berechnet'; toast('Neu berechnet'); listAbrechnungen();
+    }
+
+    async function listAbrechnungen(){
+      if(!state.periode) return;
+      const { data, error } = await supabase
+        .from('bk_abrechnungen')
+        .select('einheit_id, sum_kosten, sum_vorausz, nachzahlung, status')
+        .eq('firma_id', state.firma_id)
+        .eq('periode_id', state.periode.id)
+        .order('nachzahlung', { ascending:false });
+      if(error){ console.warn(error); return; }
+      const tb = qs('#abr-table tbody'); tb.innerHTML='';
+      (data||[]).forEach(r=>{
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${r.einheit_id.slice(0,8)}…</td>
+          <td>${fmtEUR(r.sum_kosten)}</td>
+          <td>${fmtEUR(r.sum_vorausz)}</td>
+          <td><b>${fmtEUR(r.nachzahlung)}</b></td>
+          <td>${r.status}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    async function finalizePeriode(){
+      if(!state.periode){ toast('Periode wählen'); return; }
+      // Periode abschließen -> abgeschlossen=true; Abrechnungen optional auf 'final'
+      const { error: e1 } = await supabase
+        .from('bk_periode')
+        .update({ abgeschlossen: true })
+        .eq('id', state.periode.id)
+        .eq('firma_id', state.firma_id);
+      if(e1){ toast('Abschluss fehlgeschlagen'); console.warn(e1); return; }
+      const { error: e2 } = await supabase
+        .from('bk_abrechnungen')
+        .update({ status: 'final' })
+        .eq('firma_id', state.firma_id)
+        .eq('periode_id', state.periode.id);
+      if(e2){ toast('Abrechnungen nicht finalisierbar'); console.warn(e2); }
+      toast('Periode abgeschlossen'); listPerioden(); listAbrechnungen();
+    }
+
+    // ----------------- Init -----------------
+    renderStepper();
+    await loadUserFirma();
+
+    // Events
+    qs('#btn-per-create').onclick=createPeriode;
+    qs('#btn-per-reload').onclick=listPerioden;
+    qs('#btn-basis').onclick=runSnapshot;
+    qs('#btn-abl-add').onclick=addAblesung;
+    qs('#btn-abl-list').onclick=listAblesungen;
+    qs('#btn-bel-add').onclick=addBeleg;
+    qs('#btn-bel-list').onclick=listBelege;
+    qs('#btn-recalc').onclick=recalc;
+    qs('#btn-finalize').onclick=finalizePeriode;
+
+    // Autoload Perioden
+    if(state.firma_id){ listPerioden(); }
+
+    // Default: erste Section sichtbar
+    setActiveSection('sec-perioden');
+  </script>
+</body>
+</html>

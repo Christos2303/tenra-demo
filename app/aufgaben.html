@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra — Tagesaufgaben</title>
+  <meta name="color-scheme" content="dark light" />
+
+  <style>
+    :root{
+      --bg: #0f1216;
+      --card: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.12);
+      --text: #e9edf2;
+      --muted:#a7b0ba;
+      --accent:#7aa2ff; /* dezent, clean */
+      --ok:#2ecc71;
+      --warn:#f1c40f;
+      --danger:#e74c3c;
+      --radius:16px;
+      --glass: blur(10px) saturate(120%);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    body{background: radial-gradient(1200px 800px at 70% -10%, rgba(122,162,255,.12), transparent) , var(--bg); color:var(--text)}
+    a{color:inherit}
+
+    .wrap{max-width:1200px;margin:40px auto;padding:0 16px}
+    header{
+      display:flex; gap:16px; align-items:center; justify-content:space-between;
+      margin-bottom:18px;
+    }
+    .brand{font-weight:700; letter-spacing:.2px; font-size:20px; opacity:.9}
+    .gate{
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      padding:16px; backdrop-filter:var(--glass);
+    }
+
+    .toolbar{
+      display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;
+      margin: 14px 0 22px;
+    }
+    select, button, input[type="text"], textarea{
+      background: rgba(255,255,255,0.06); color:var(--text);
+      border:1px solid var(--border); border-radius:12px; padding:10px 12px; outline:none;
+    }
+    button{cursor:pointer; transition: .2s transform ease}
+    button:hover{transform: translateY(-1px)}
+    .btn-accent{border-color:rgba(122,162,255,.35)}
+    .hint-badge{font-size:12px; color:var(--muted)}
+
+    .grid{
+      display:grid; grid-template-columns: 1.2fr 1fr .8fr; gap:16px;
+    }
+    .col{
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+      padding:14px; backdrop-filter:var(--glass);
+    }
+    .col h3{margin:0 0 10px; font-size:15px; font-weight:700; letter-spacing:.2px; color:#dfe7ef}
+    .task{
+      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+      padding:12px; border:1px solid var(--border); border-radius:14px; margin-bottom:10px;
+      background: rgba(255,255,255,0.03);
+    }
+    .task .dot{
+      width:20px;height:20px;border-radius:999px;border:2px solid var(--muted);
+      display:inline-block; position:relative; cursor:pointer;
+    }
+   .task.done {
+  opacity: 0.5;
+  background: rgba(255,255,255,0.02);
+  pointer-events: none; /* keine Klicks mehr */
+  filter: grayscale(60%);
+}
+
+.task.done .btn-ok {
+  background: rgba(255,255,255,0.08);
+  color: var(--muted);
+  border-color: rgba(255,255,255,0.1);
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+
+    .right-hints .hint-card{
+      padding:12px; border:1px dashed rgba(255,255,255,.2); border-radius:14px; margin-bottom:10px; color:#d8e2ee;
+      background:linear-gradient(180deg, rgba(122,162,255,.08), transparent);
+    }
+
+    .admin-area{
+      margin-top:18px;
+      background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:14px;
+    }
+    .admin-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .row{display:flex; gap:10px; align-items:center; margin-bottom:8px}
+    .row label{width:140px; font-size:13px; color:var(--muted)}
+    .split{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .empty{color:var(--muted); font-size:13px; padding:10px 2px}
+
+    .history{
+      margin-top:16px;
+      border-top:1px solid var(--border); padding-top:12px; font-size:14px;
+      max-height:260px; overflow:auto;
+    }
+    .history-item{display:flex; gap:10px; padding:8px 0; border-bottom:1px dashed rgba(255,255,255,.08)}
+    .history-item:last-child{border-bottom:none}
+    .history-item .who{min-width:180px; color:var(--muted)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Tenra — Tagesaufgaben</div>
+    <div id="roleBadge" class="hint-badge">—</div>
+  </header>
+
+  <div id="gate" class="gate">Authentifiziere…</div>
+
+  <div id="main" style="display:none">
+    <div class="toolbar">
+      <div style="display:flex; gap:8px; align-items:center">
+        <select id="selAbt" title="Abteilung"></select>
+        <select id="selLinie" title="Linie"></select>
+        <span class="hint-badge" id="todayBadge"></span>
+      </div>
+      <div id="adminButtons" style="display:none; gap:8px">
+        <button class="btn-accent" id="btnNewPermanent">+ Permanente Aufgabe</button>
+        <button class="btn-accent" id="btnNewOnce">+ Einmalige Aufgabe (heute/Datum)</button>
+        <button class="btn-accent" id="btnSetHint">+ Hinweis für heute</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col" id="colPermanent">
+        <h3>🔁 Täglich</h3>
+        <div class="list"></div>
+      </div>
+
+      <div class="col" id="colOnce">
+        <h3>📆 Heute</h3>
+        <div class="list"></div>
+      </div>
+
+      <div class="col right-hints" id="colHints">
+        <h3>📝 Hinweis</h3>
+        <div class="list"></div>
+      </div>
+    </div>
+
+    <div class="admin-area" id="adminArea" style="display:none">
+      <h3 style="margin:0 0 8px">Owner/Admin — Verwalten</h3>
+
+      <!-- Create / Edit forms appear inline -->
+      <div id="adminForms" class="split">
+        <div id="formPermanent" style="display:none">
+          <div class="row"><label>Titel</label><input id="p_title" type="text" placeholder="z. B. Linie reinigen, Check A" /></div>
+          <div class="row"><label>Beschreibung</label><textarea id="p_desc" rows="3" placeholder="Optional: Wie wird es gemacht?"></textarea></div>
+          <div class="row"><label>Speichern</label><button id="p_save" class="btn-accent">Permanente Aufgabe anlegen</button></div>
+        </div>
+
+        <div id="formOnce" style="display:none">
+          <div class="row"><label>Titel</label><input id="o_title" type="text" placeholder="z. B. Sonderreinigung Sensor" /></div>
+          <div class="row"><label>Beschreibung</label><textarea id="o_desc" rows="3" placeholder="Optional"></textarea></div>
+          <div class="row"><label>Datum</label><input id="o_date" type="date" /></div>
+          <div class="row"><label>Speichern</label><button id="o_save" class="btn-accent">Einmalige Aufgabe anlegen</button></div>
+        </div>
+
+        <div id="formHint" style="display:none">
+          <div class="row"><label>Hinweis</label><textarea id="h_text" rows="3" placeholder="z. B. Heute besonders auf Ordnung achten"></textarea></div>
+          <div class="row"><label>Datum</label><input id="h_date" type="date" /></div>
+          <div class="row"><label>Speichern</label><button id="h_save" class="btn-accent">Hinweis speichern</button></div>
+        </div>
+      </div>
+
+      <div class="history" id="history"></div>
+    </div>
+  </div>
+
+  <!-- Templates -->
+  <template id="taskItem">
+    <div class="task">
+      <span class="dot" title="Anklicken für Details"></span>
+      <div>
+        <div class="title"></div>
+        <div class="desc"></div>
+        <div class="meta"></div>
+      </div>
+      <div>
+        <button class="btn-ok">Erledigt</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="hintCard">
+    <div class="hint-card"></div>
+  </template>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    // =======================
+    // Supabase Setup
+    // =======================
+     const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";     // <<-- EINTRAGEN
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";                   // <<-- EINTRAGEN
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // =======================
+    // State
+    // =======================
+    const state = {
+      session: null,
+      user: null,
+      firm: null,
+      role: null, // 'owner' | 'admin' | 'member'
+      abt: null, linie: null,
+      today: localISODate(),
+    };
+
+    // =======================
+    // Elements
+    // =======================
+    const elGate = document.getElementById('gate');
+    const elMain = document.getElementById('main');
+    const roleBadge = document.getElementById('roleBadge');
+
+    const selAbt = document.getElementById('selAbt');
+    const selLinie = document.getElementById('selLinie');
+    const todayBadge = document.getElementById('todayBadge');
+
+    const colPermanent = document.querySelector('#colPermanent .list');
+    const colOnce = document.querySelector('#colOnce .list');
+    const colHints = document.querySelector('#colHints .list');
+
+    const adminButtons = document.getElementById('adminButtons');
+    const adminArea = document.getElementById('adminArea');
+    const historyEl = document.getElementById('history');
+    const tplTask = document.getElementById('taskItem');
+    const tplHint = document.getElementById('hintCard');
+
+    // Admin forms
+    const formPermanent = document.getElementById('formPermanent');
+    const formOnce = document.getElementById('formOnce');
+    const formHint = document.getElementById('formHint');
+
+    document.getElementById('btnNewPermanent')?.addEventListener('click', ()=>{
+      formPermanent.style.display = 'block'; formOnce.style.display='none'; formHint.style.display='none';
+    });
+    document.getElementById('btnNewOnce')?.addEventListener('click', ()=>{
+      formPermanent.style.display = 'none'; formOnce.style.display='block'; formHint.style.display='none';
+      document.getElementById('o_date').value = state.today;
+    });
+    document.getElementById('btnSetHint')?.addEventListener('click', ()=>{
+      formPermanent.style.display = 'none'; formOnce.style.display='none'; formHint.style.display='block';
+      document.getElementById('h_date').value = state.today;
+    });
+
+    // Save Permanent
+    document.getElementById('p_save')?.addEventListener('click', async ()=>{
+      const title = document.getElementById('p_title').value.trim();
+      const desc = document.getElementById('p_desc').value.trim();
+      if(!title || !state.abt || !state.linie) return alert('Titel, Abteilung & Linie sind erforderlich.');
+      const { error } = await supabase.from('tagesaufgaben_templates').insert({
+  firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
+
+        typ: 'permanent', titel: title, beschreibung: desc || null, aktiv: true
+      });
+      if(error){ alert(error.message); return; }
+      document.getElementById('p_title').value = ''; document.getElementById('p_desc').value = '';
+      await refreshAll();
+    });
+
+    // Save Once
+    document.getElementById('o_save')?.addEventListener('click', async ()=>{
+      const title = document.getElementById('o_title').value.trim();
+      const desc = document.getElementById('o_desc').value.trim();
+      const date = document.getElementById('o_date').value;
+      if(!title || !date || !state.abt || !state.linie) return alert('Titel, Datum, Abteilung & Linie sind erforderlich.');
+      const { error } = await supabase.from('tagesaufgaben_templates').insert({
+  firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
+
+        typ: 'einmalig', datum: date, titel: title, beschreibung: desc || null, aktiv: true
+      });
+      if(error){ alert(error.message); return; }
+      document.getElementById('o_title').value=''; document.getElementById('o_desc').value=''; document.getElementById('o_date').value=state.today;
+      await refreshAll();
+    });
+
+    // Save Hint
+    document.getElementById('h_save')?.addEventListener('click', async ()=>{
+      const text = document.getElementById('h_text').value.trim();
+      const date = document.getElementById('h_date').value;
+      if(!text || !date || !state.abt || !state.linie) return alert('Hinweis, Datum, Abteilung & Linie sind erforderlich.');
+      const { error } = await supabase.from('tagesaufgaben_hinweise').insert({
+        firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
+        datum: date, text
+      });
+      if(error){ alert(error.message); return; }
+      document.getElementById('h_text').value=''; document.getElementById('h_date').value=state.today;
+      await refreshAll();
+    });
+
+    // =======================
+    // Boot
+    // =======================
+    (async function init(){
+      todayBadge.textContent = `Heute: ${state.today}`;
+      const { data:{ session } } = await supabase.auth.getSession();
+      if(!session){
+        elGate.textContent = "Nicht angemeldet.";
+        return;
+      }
+      state.session = session; state.user = session.user;
+      const ok = await hydrateFirmAndRole();
+      if(!ok){
+        elGate.textContent = "Kein Zugriff: Du bist keiner Firma zugeordnet oder hast keine Rolle.";
+        return;
+      }
+      elGate.style.display='none'; elMain.style.display='block';
+      roleBadge.textContent = `Rolle: ${state.role?.toUpperCase()}`;
+      if(state.role==='owner' || state.role==='admin'){
+        adminButtons.style.display='flex';
+        adminArea.style.display='block';
+      }
+
+      await fillAbteilungen();
+      await fillLinien();
+      await refreshAll();
+
+      selAbt.addEventListener('change', async ()=>{
+  state.abt = selAbt.value || null;
+  await fillLinien(true);
+  await refreshAll(true);
+});
+selLinie.addEventListener('change', async ()=>{
+  state.linie = selLinie.value || null;
+  await refreshAll(true);
+});
+
+    })();
+
+    async function hydrateFirmAndRole() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+  state.user = session.user;
+
+  // 🔹 Alle Firmen, bei denen der User 'accepted' ist
+  const { data: firmsUser, error } = await supabase
+    .from("firmen_user")
+    .select("firma_id, role, status")
+    .eq("user_id", state.user.id)
+    .eq("status", "accepted");
+
+  if (error || !firmsUser?.length) return false;
+
+  // 🔹 Erste Firma setzen (oder gespeicherte Firma aus localStorage)
+  const savedFirm = localStorage.getItem("Tenra.currentFirmaId");
+  const active = firmsUser.find(f => String(f.firma_id) === String(savedFirm)) || firmsUser[0];
+
+  state.firm = active.firma_id;
+state.role = active.role;
+
+
+  // 🔹 Firmenname optional laden (falls benötigt)
+  const { data: firmData } = await supabase
+    .from("firmen")
+    .select("name")
+    .eq("id", state.firm)
+    .maybeSingle();
+  state.firmName = firmData?.name || `Firma ${state.firm}`;
+
+  // 🔹 In localStorage speichern
+  localStorage.setItem("Tenra.currentFirmaId", state.firm);
+  localStorage.setItem("Tenra.currentRole", state.role);
+
+  return true;
+}
+
+
+    async function fillAbteilungen(){
+      selAbt.innerHTML = '';
+      const { data, error } = await supabase
+  .from('abteilungen')
+  .select('id, name')
+  .eq('firma_id', state.firm) // ✅ statt firm_id
+  .order('name');
+
+      if(error){ alert(error.message); return; }
+      if(!data?.length){ selAbt.innerHTML = `<option value="">Keine Abteilung</option>`; return; }
+      data.forEach(a=>{
+        const o = document.createElement('option');
+        o.value = a.id; o.textContent = a.name; selAbt.appendChild(o);
+      });
+      state.abt = state.abt || data[0]?.id || null;
+      if(state.abt) selAbt.value = state.abt;
+    }
+
+    async function fillLinien(reset=false){
+        console.log("🔹 fillLinien() → firma_id:", state.firm, "abteilung_id:", state.abt);
+
+      selLinie.innerHTML = '';
+      if(!state.abt) { selLinie.innerHTML = `<option value="">Keine Linie</option>`; state.linie=null; return; }
+      const { data, error } = await supabase
+  .from('linien')
+  .select('id, name')
+  .eq('firma_id', state.firm) // ✅ statt firm_id
+  .eq('abteilung_id', state.abt)
+  .order('name');
+
+      if(error){ alert(error.message); return; }
+      if(!data?.length){ selLinie.innerHTML=`<option value="">Keine Linie</option>`; state.linie=null; return; }
+      data.forEach(l=>{
+        const o = document.createElement('option');
+        o.value = l.id; o.textContent = l.name; selLinie.appendChild(o);
+      });
+      if(reset || !state.linie){ state.linie = data[0]?.id || null; }
+      if(state.linie) selLinie.value = state.linie;
+    }
+
+    async function refreshAll(skipHistory=false){
+      if(!state.abt || !state.linie){ colPermanent.innerHTML = `<div class="empty">Bitte Abteilung & Linie wählen.</div>`;
+        colOnce.innerHTML = ''; colHints.innerHTML=''; return; }
+
+      await Promise.all([renderPermanent(), renderOnce(), renderHints()]);
+      if(!skipHistory && (state.role==='owner' || state.role==='admin')){
+        await renderHistory();
+      }
+    }
+
+    async function renderPermanent(){
+      colPermanent.innerHTML = '';
+      const { data, error } = await supabase
+        .from('tagesaufgaben_templates')
+        .select('id, titel, beschreibung')
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, typ:'permanent', aktiv:true })
+        .order('id');
+      if(error){ colPermanent.innerHTML = `<div class="empty">${error.message}</div>`; return; }
+
+      if(!data?.length){ colPermanent.innerHTML = `<div class="empty">Keine täglichen Aufgaben.</div>`; return; }
+
+      // Pull completion for today
+  const currentShift = getCurrentShift();
+const { data: done, error: e2 } = await supabase
+  .from('tagesaufgaben_status')
+  .select('template_id, schicht')
+  .eq('firma_id', state.firm)
+  .eq('abteilung_id', state.abt)
+  .eq('linie_id', state.linie)
+  .eq('datum', state.today)
+  .eq('erledigt', true)
+  .in('schicht', [currentShift, null]); // 🔹 schicht ODER null akzeptieren
+const doneSet = new Set((done || []).map(x => x.template_id));
+
+
+
+      data.forEach(tpl=>{
+        const node = tplTask.content.firstElementChild.cloneNode(true);
+        node.querySelector('.title').textContent = tpl.titel;
+        node.querySelector('.meta').innerHTML = `<span class="pill">täglich</span>`;
+        const desc = node.querySelector('.desc');
+        if(tpl.beschreibung){ desc.textContent = tpl.beschreibung; }
+
+        const dot = node.querySelector('.dot');
+        dot.addEventListener('click', ()=> node.classList.toggle('show-desc'));
+
+        const btn = node.querySelector('.btn-ok');
+if (doneSet.has(`${tpl.id}|${state.today}`)) {
+  node.classList.add('done');
+  btn.disabled = true;
+  btn.textContent = "Erledigt ✓";
+} else {
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = "✓";
+    await markDone(tpl.id, state.today);
+    await renderOnce();
+    await renderHistory();
+  });
+}
+
+
+        colPermanent.appendChild(node);
+      });
+    }
+
+    async function renderOnce(){
+      colOnce.innerHTML = '';
+      const { data, error } = await supabase
+        .from('tagesaufgaben_templates')
+        .select('id, titel, beschreibung, datum')
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, typ:'einmalig', aktiv:true, datum: state.today })
+        .order('id');
+      if(error){ colOnce.innerHTML = `<div class="empty">${error.message}</div>`; return; }
+      if(!data?.length){ colOnce.innerHTML = `<div class="empty">Keine besonderen Aufgaben heute.</div>`; return; }
+
+      const { data: done, error: e2 } = await supabase
+        .from('tagesaufgaben_status')
+        .select('template_id, einmalig_datum')
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, datum: state.today, erledigt:true });
+
+      const doneSet = new Set((done||[]).map(x=> `${x.template_id}|${x.einmalig_datum||''}`));
+
+      data.forEach(tpl=>{
+        const node = tplTask.content.firstElementChild.cloneNode(true);
+        node.querySelector('.title').textContent = tpl.titel;
+        node.querySelector('.meta').innerHTML = `<span class="pill">heute</span>`;
+        const desc = node.querySelector('.desc');
+        if(tpl.beschreibung){ desc.textContent = tpl.beschreibung; }
+        node.querySelector('.dot').addEventListener('click', ()=> node.classList.toggle('show-desc'));
+
+        if(doneSet.has(`${tpl.id}|${state.today}`)) node.classList.add('done');
+
+        node.querySelector('.btn-ok').addEventListener('click', async ()=>{
+          await markDone(tpl.id, state.today);
+          await renderOnce();
+          await renderHistory();
+        });
+
+        colOnce.appendChild(node);
+      });
+    }
+
+    async function renderHints(){
+      colHints.innerHTML = '';
+      const { data, error } = await supabase
+        .from('tagesaufgaben_hinweise')
+        .select('id, text')
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, datum: state.today })
+        .order('id');
+      if(error){ colHints.innerHTML = `<div class="empty">${error.message}</div>`; return; }
+
+      if(!data?.length){
+        const empty = document.createElement('div');
+        empty.className='empty';
+        empty.textContent='Kein Hinweis für heute.';
+        colHints.appendChild(empty);
+        return;
+      }
+
+      data.forEach(h=>{
+        const node = tplHint.content.firstElementChild.cloneNode(true);
+        node.textContent = h.text;
+        colHints.appendChild(node);
+      });
+    }
+
+    async function markDone(template_id, einmalig_datum=null){
+      const payload = {
+  firma_id: state.firm,
+  abteilung_id: state.abt,
+  linie_id: state.linie,
+  template_id,
+  datum: state.today,
+  schicht: getCurrentShift(),
+  einmalig_datum,
+  erledigt: true,
+  user_id: state.user.id
+};
+
+      const { error } = await supabase
+  .from('tagesaufgaben_status')
+  .upsert(payload, {
+    onConflict: 'firma_id,abteilung_id,linie_id,template_id,datum,schicht'
+  });
+
+    }
+
+    async function renderHistory(){
+      historyEl.innerHTML = '<div class="hint-badge">Vergangene Erledigungen (letzte 14 Tage)</div>';
+      const since = addDays(state.today, -14);
+      const { data, error } = await supabase
+        .from('tagesaufgaben_history_view') // siehe SQL unten (VIEW)
+        .select('*')
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie })
+        .gte('datum', since)
+        .order('completed_at', { ascending:false })
+        .limit(100);
+      if(error){ historyEl.innerHTML += `<div class="empty">${error.message}</div>`; return; }
+      if(!data?.length){ historyEl.innerHTML += `<div class="empty">Noch keine Einträge.</div>`; return; }
+      data.forEach(row=>{
+        const d = document.createElement('div');
+        d.className='history-item';
+        d.innerHTML = `
+          <div class="who">${row.user_email || row.user_id}</div>
+          <div style="flex:1">${row.titel} <span class="pill">${row.typ}</span></div>
+          <div>${row.datum}</div>
+          <div class="hint-badge">${row.completed_at?.replace('T',' ').slice(0,16)}</div>
+        `;
+        historyEl.appendChild(d);
+      });
+    }
+
+    function localISODate(){
+      const d = new Date();
+      const tzOff = d.getTimezoneOffset();
+      const d2 = new Date(d.getTime() - (tzOff * 60000));
+      return d2.toISOString().slice(0,10);
+    }
+function getCurrentShift() {
+  const now = new Date();
+  const hour = now.getHours();
+
+  if (hour >= 6 && hour < 14.5) return "FS";   // Frühschicht
+  if (hour >= 14.5 && hour < 23) return "SS";  // Spätschicht
+  return "NS";                                 // Nachtschicht
+}
+
+
+    function addDays(yyyy_mm_dd, delta){
+      const [y,m,dd] = yyyy_mm_dd.split('-').map(Number);
+      const d = new Date(y, m-1, dd);
+      d.setDate(d.getDate()+delta);
+      const y2=d.getFullYear(); const m2=String(d.getMonth()+1).padStart(2,'0'); const d2=String(d.getDate()).padStart(2,'0');
+      return `${y2}-${m2}-${d2}`;
+    }
+  </script>
+</div>
+</body>
+</html>
