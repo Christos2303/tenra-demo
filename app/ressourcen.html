@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ressourcen — Tenra</title>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+    window.supabase = createClient(
+      "https://lajqzmlhcsxhpfbhmlxe.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg"
+    );
+  </script>
+
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --txt: #0f1222;
+      --muted: #5f6b85;
+      --stroke: rgba(15,18,34,0.08);
+      --blue: #007aff;
+      --radius: 18px;
+      --shadow: 0 20px 60px rgba(16,24,40,0.1);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg);color:var(--txt);}
+    header{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;
+      padding:16px 20px;background:rgba(255,255,255,.8);backdrop-filter:blur(12px);border-bottom:1px solid var(--stroke)}
+    .brand{display:flex;align-items:center;gap:8px;font-weight:700;text-decoration:none;color:var(--txt)}
+    .logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#7aa3ff,#6df0a6)}
+    main{max-width:1000px;margin:40px auto;padding:0 20px}
+    h1{font-size:22px;margin-bottom:6px}
+    .tabs{display:flex;gap:10px;margin:20px 0}
+    .tab{padding:8px 14px;border-radius:10px;border:1px solid var(--stroke);cursor:pointer;background:#fff;transition:.2s}
+    .tab.active{background:var(--blue);color:#fff;transform:translateY(-2px)}
+    .section{display:none;animation:fade .3s ease}
+    .section.active{display:block}
+    @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+    .card{background:#fff;border:1px solid var(--stroke);border-radius:var(--radius);padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}
+    .btn{display:inline-block;padding:8px 14px;border-radius:10px;background:var(--blue);color:#fff;text-decoration:none;border:none;cursor:pointer}
+    .btn.del{background:#ff5c5c}
+    input,textarea,select{width:100%;padding:10px;border:1px solid var(--stroke);border-radius:10px;margin-bottom:12px;font:inherit}
+    label{font-weight:600;font-size:14px;margin-bottom:4px;display:block}
+    .upload-block{border:2px dashed var(--stroke);padding:18px;border-radius:12px;margin-bottom:10px}
+    .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;
+      padding:10px 14px;border-radius:12px;font-size:13px;opacity:0;transition:.3s}
+    .toast.show{opacity:1}
+    .status{font-size:13px;color:var(--muted)}
+    .guideList h4{cursor:pointer;margin:6px 0;padding:8px 10px;border-radius:8px;background:#fff;transition:.2s}
+    .guideList h4:hover{background:#f2f4f8}
+    .guide-block img{max-width:100%;border-radius:12px;margin-bottom:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/dashboard.html" class="brand"><span class="logo-dot"></span> Tenra</a>
+    <span id="roleBadge" class="status"></span>
+  </header>
+
+  <main>
+    <h1>Ressourcen</h1>
+    <p class="status">Anleitungen & Downloads für dein Team</p>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="anleitungen">📘 Anleitungen</div>
+      <div class="tab" data-tab="downloads">⬇️ Downloads</div>
+      <div class="tab" id="tabAdd" data-tab="add" style="display:none;">➕ Hinzufügen</div>
+      <div class="tab" id="tabApprove" data-tab="approve" style="display:none;">✅ Zu genehmigen</div>
+    </div>
+
+    <section id="anleitungen" class="section active">
+      <div class="guideList" id="guideList"></div>
+      <div id="guideView"></div>
+    </section>
+
+    <section id="downloads" class="section">
+      <div id="downloadListe"></div>
+    </section>
+
+    <section id="add" class="section">
+      <form id="formAdd">
+        <label>Typ</label>
+        <select id="typ">
+          <option value="anleitung">Anleitung</option>
+          <option value="download">Download</option>
+        </select>
+
+        <label>Titel</label>
+        <input id="titel" required />
+
+        <div id="guideBlocks"></div>
+        <button type="button" class="btn" id="addBlockBtn">+ Block hinzufügen</button>
+
+        <div id="fileSection">
+          <label>Datei (für Downloads)</label>
+          <input type="file" id="fileInput" />
+        </div>
+
+        <button type="submit" class="btn">Speichern</button>
+      </form>
+    </section>
+
+    <section id="approve" class="section">
+      <div id="approveList"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    const $=(q)=>document.querySelector(q);const $$=(q)=>document.querySelectorAll(q);
+    const toast=(m)=>{const t=$("#toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);};
+
+    let activeFirmaId=null;let user=null;let role=null;
+
+    // Tabs
+    $$(".tab").forEach(tab=>{
+      tab.onclick=()=>{
+        $$(".tab").forEach(t=>t.classList.remove("active"));
+        tab.classList.add("active");
+        const target=tab.dataset.tab;
+        $$(".section").forEach(s=>s.classList.remove("active"));
+        $("#"+target).classList.add("active");
+      };
+    });
+
+    const { data:{user:u} }=await supabase.auth.getUser(); user=u;
+    const { data: memberships }=await supabase.from("firmen_user")
+      .select("firma_id, role, status").eq("user_id",user.id).eq("status","accepted");
+    if(!memberships?.length){toast("Keine Firma gefunden");throw new Error("no firma")}
+    activeFirmaId=memberships[0].firma_id;role=memberships[0].role.toLowerCase();
+    $("#roleBadge").textContent="Rolle: "+role;
+    if(role==="owner"||role==="admin"){ $("#tabAdd").style.display="inline-block"; $("#tabApprove").style.display="inline-block"; }
+    else $("#tabAdd").style.display="inline-block";
+
+    // ========= LADEN =========
+    async function ladeAnleitungen(){
+      const { data }=await supabase.from("ressourcen").select("*")
+        .eq("firma_id",activeFirmaId).eq("typ","anleitung").eq("status","approved");
+      const l=$("#guideList");l.innerHTML="";
+      (data||[]).forEach(g=>{
+        const h=document.createElement("h4");h.textContent=g.titel;
+        h.onclick=()=>zeigeAnleitung(g);
+        l.appendChild(h);
+      });
+    }
+
+    function zeigeAnleitung(g){
+      const v=$("#guideView");v.innerHTML="";
+      try{
+        const blocks=JSON.parse(g.beschreibung||"[]");
+        if(Array.isArray(blocks) && blocks.length>0){
+          blocks.forEach(b=>{
+            const d=document.createElement("div");d.className="guide-block";
+            if(b.img)d.innerHTML+=`<img src="${b.img}" alt="">`;
+            if(b.txt)d.innerHTML+=`<p>${b.txt}</p>`;
+            v.appendChild(d);
+          });
+        }else{
+          v.innerHTML=`<p>${g.beschreibung||"Keine Beschreibung"}</p>`;
+        }
+      }catch{
+        v.innerHTML=`<p>${g.beschreibung||"Keine Beschreibung"}</p>`;
+      }
+      if(role==="owner"||role==="admin"){
+        v.innerHTML+=`<button class="btn del" onclick="delItem('${g.id}')">🗑️ Löschen</button>`;
+      }
+    }
+
+    async function ladeDownloads(){
+      const { data }=await supabase.from("ressourcen").select("*")
+        .eq("firma_id",activeFirmaId).eq("typ","download").eq("status","approved");
+      const c=$("#downloadListe");c.innerHTML="";
+      (data||[]).forEach(d=>{
+        c.innerHTML+=`<div class="card"><h3>${d.titel}</h3><p>${d.beschreibung||""}</p>
+          ${d.datei_url?`<a href="${d.datei_url}" class="btn" target="_blank">⬇️ Download</a>`:""}
+          ${(role==="owner"||role==="admin")?`<button class="btn del" onclick="delItem('${d.id}')">🗑️</button>`:""}
+        </div>`;
+      });
+    }
+
+   async function ladePending(){
+  if(!(role==="owner"||role==="admin")) return;
+  const { data } = await supabase
+    .from("ressourcen")
+    .select("*")
+    .eq("firma_id", activeFirmaId)
+    .eq("status", "pending");
+
+  const c = $("#approveList");
+  c.innerHTML = "";
+
+  (data || []).forEach(e => {
+    let contentHTML = "";
+
+    if (e.typ === "anleitung") {
+      try {
+        const blocks = JSON.parse(e.beschreibung || "[]");
+        if (Array.isArray(blocks) && blocks.length > 0) {
+          blocks.forEach(b => {
+            contentHTML += `<div class="guide-block">`;
+            if (b.img) contentHTML += `<img src="${b.img}" alt="">`;
+            if (b.txt) contentHTML += `<p>${b.txt}</p>`;
+            contentHTML += `</div>`;
+          });
+        } else {
+          contentHTML = `<p>${e.beschreibung || ""}</p>`;
+        }
+      } catch {
+        contentHTML = `<p>${e.beschreibung || ""}</p>`;
+      }
+    } else if (e.typ === "download") {
+      contentHTML = `
+        <p>${e.beschreibung || ""}</p>
+        ${e.datei_url ? `<a href="${e.datei_url}" class="btn" target="_blank">⬇️ Download ansehen</a>` : ""}
+      `;
+    }
+
+    c.innerHTML += `
+      <div class="card">
+        <h3>${e.titel}</h3>
+        ${contentHTML}
+        <div style="margin-top:8px;">
+          <button class="btn" onclick="approveItem('${e.id}','approved')">✅ Genehmigen</button>
+          <button class="btn del" onclick="approveItem('${e.id}','rejected')">❌ Ablehnen</button>
+        </div>
+      </div>`;
+  });
+}
+
+
+    window.approveItem=async(id,s)=>{await supabase.from("ressourcen").update({status:s}).eq("id",id);
+      toast("Gespeichert");ladePending();ladeAnleitungen();ladeDownloads();};
+    window.delItem=async(id)=>{await supabase.from("ressourcen").delete().eq("id",id);
+      toast("Gelöscht");ladeAnleitungen();ladeDownloads();ladePending();};
+
+    ladeAnleitungen();ladeDownloads();ladePending();
+
+    // ====== ADD BLOCKS ======
+    const guideBlocks=$("#guideBlocks");
+    $("#addBlockBtn").onclick=()=>{if($("#typ").value==="anleitung")addBlock();else toast("Nur bei Anleitungen!")};
+    function addBlock(){
+      const b=document.createElement("div");b.className="upload-block";
+      b.innerHTML=`<label>Bild (optional)</label><input type="file" class="imgBlock"/>
+                   <label>Text</label><textarea class="txtBlock" rows="2"></textarea>`;
+      guideBlocks.appendChild(b);
+    }
+
+    // ====== SPEICHERN ======
+    $("#formAdd").onsubmit=async(e)=>{
+      e.preventDefault();
+      const typ=$("#typ").value,titel=$("#titel").value.trim();
+      let beschreibung="";
+      let blocks=[];
+      // Anleitungen → mehrere Blöcke
+      if(typ==="anleitung"){
+        const imgs=$$(".imgBlock"),txts=$$(".txtBlock");
+        for(let i=0;i<imgs.length;i++){
+          let url=null;const f=imgs[i].files[0];
+          if(f){
+            const path=`firma_${activeFirmaId}/${user.id}/${Date.now()}_${f.name}`;
+            const { error }=await supabase.storage.from("ressourcen_files").upload(path,f);
+            if(!error){const { data }=supabase.storage.from("ressourcen_files").getPublicUrl(path);url=data.publicUrl;}
+          }
+          blocks.push({img:url,txt:txts[i].value});
+        }
+        beschreibung=JSON.stringify(blocks);
+      }
+      // Downloads → nur 1 Datei + Beschreibung
+      if(typ==="download"){
+        beschreibung=$("#beschreibung").value.trim();
+      }
+
+      let fileUrl=null;
+      if(typ==="download"){
+        const f=$("#fileInput").files[0];
+        if(f){
+          const path=`firma_${activeFirmaId}/${user.id}/${Date.now()}_${f.name}`;
+          const { error }=await supabase.storage.from("ressourcen_files").upload(path,f);
+          if(!error){const { data }=supabase.storage.from("ressourcen_files").getPublicUrl(path);fileUrl=data.publicUrl;}
+        }
+      }
+
+      const eintrag={
+        firma_id:activeFirmaId,user_id:user.id,typ,titel,beschreibung,
+        status:(role==="owner"||role==="admin")?"approved":"pending"
+      };
+      if(typ==="download") eintrag.datei_url=fileUrl;
+
+      const { error }=await supabase.from("ressourcen").insert(eintrag);
+      if(error) toast("Fehler: "+error.message);
+      else {toast("Gespeichert");$("#formAdd").reset();guideBlocks.innerHTML="";ladeAnleitungen();ladeDownloads();ladePending();}
+    };
+  </script>
+</body>
+</html>
