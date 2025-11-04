@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tenra — Pilotprojekt 2025</title>
+  <meta name="description" content="Tenra Pilotprojekt: Eine klare Plattform für Abläufe, Aufgaben & interne Organisation in Werkstätten und Produktionsbetrieben. Demo: Funktionen einzeln ausprobieren – ohne Stress." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%2309a66d'/%3E%3Ccircle cx='16' cy='16' r='6' fill='white'/%3E%3C/svg%3E" />
+  <style>
+        /* ===== TENRA – Fixed Dark Theme ===== */
+:root{
+  --bg: #0b0f14;
+  --card: #131a24;
+  --ink: #e8eef8;
+  --muted: #9aa4b2;
+  --brand: #00c68f;
+  --brand-ink: #00a779;
+  --line: rgba(255,255,255,0.08);
+  --glass: rgba(20,25,35,0.7);
+  --shadow: 0 16px 50px rgba(0,0,0,0.55);
+  --radius-xl: 20px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%; background:var(--bg); color:var(--ink);}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Segoe UI,Roboto,Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  background:
+    radial-gradient(800px 500px at 20% -10%, #0f1a21 0%, transparent 60%),
+    radial-gradient(800px 600px at 100% 20%, #0d171c 0%, transparent 60%),
+    var(--bg);
+}
+
+.container{max-width:1120px;margin:0 auto;padding:24px}
+.nav{position:sticky;top:0;backdrop-filter:saturate(180%) blur(16px);background:var(--glass);border-bottom:1px solid var(--line);z-index:10}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-weight:700;letter-spacing:0.2px}
+.dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,var(--brand),#43ffd4)}
+.nav-actions{display:flex;gap:10px;align-items:center}
+
+.btn{appearance:none;border:1px solid var(--line);background:#1c2530;color:var(--ink);padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer;transition:all .2s ease}
+.btn:hover{transform:translateY(-1px);background:#232c38}
+.btn-primary{background:linear-gradient(180deg,#00c68f,#00a472);color:white;border:none;box-shadow:0 8px 20px rgba(0,198,143,0.25)}
+.btn-primary:hover{filter:brightness(1.1)}
+.ghost{background:rgba(255,255,255,0.05);color:var(--ink);border:1px solid rgba(255,255,255,0.1)}
+.ghost:hover{background:rgba(255,255,255,0.1)}
+
+.hero{padding:52px 0 24px;display:grid;gap:22px}
+.headline{font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-0.5px;font-weight:800}
+.sub{font-size:clamp(14px,2.2vw,18px);color:var(--muted);max-width:750px}
+
+.callout{display:grid;grid-template-columns:1.1fr 0.9fr;gap:22px;align-items:stretch}
+@media(max-width:980px){.callout{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-xl);box-shadow:var(--shadow);backdrop-filter:blur(14px);transition:all 0.25s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.card-pad{padding:22px}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:linear-gradient(180deg,#00362a,#004f3d);color:#00c68f;font-weight:700;letter-spacing:.2px;border:1px solid rgba(0,198,143,.35)}
+.list{display:grid;gap:12px;margin:16px 0 0;padding:0}
+.li{list-style:none;display:flex;align-items:flex-start;gap:12px}
+.li b{font-weight:700}
+.illus{border-radius:18px;height:100%;min-height:280px;background:linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02));border:1px solid var(--line);position:relative;overflow:hidden}
+.grid{--g:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:var(--g);padding:18px}
+.cell{background:rgba(255,255,255,0.06);border:1px solid var(--line);height:56px;border-radius:14px}
+
+.note{background:#1a1f29!important;color:#e8eef8!important;border:1px solid rgba(255,255,255,0.08);box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+
+.stage{display:grid;grid-template-columns:0.9fr 1.1fr;gap:22px;margin-top:26px}
+@media(max-width:980px){.stage{grid-template-columns:1fr}}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer;font-weight:600;color:var(--ink)}
+.tab.active{background:linear-gradient(180deg,#00c68f,#00a472);color:white;border-color:transparent}
+
+.demo-card{padding:18px;min-height:320px}
+.col{display:grid;gap:10px}
+.row{display:flex;gap:10px;align-items:center}
+.chip{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,0.08);font-size:12px;font-weight:700;color:var(--ink)}
+.task{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);background:rgba(255,255,255,0.04);border-radius:14px;transition:transform .18s ease,box-shadow .18s ease}
+.task:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+.task .left{display:flex;align-items:center;gap:10px}
+.check{width:18px;height:18px;border:2px solid var(--brand);border-radius:6px;display:inline-block;position:relative;cursor:pointer}
+.check.done{background:linear-gradient(180deg,#00c68f,#00a472);border-color:transparent}
+.check.done::after{content:"";position:absolute;inset:4px;background:white;border-radius:4px}
+.pill{font-size:11px;padding:4px 8px;border-radius:999px;background:#004936;color:#00c68f;font-weight:800;border:1px solid rgba(0,198,143,0.4)}
+
+footer{margin:42px 0 30px;color:var(--muted);font-size:14px}
+.toggle{display:none!important}
+
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="#">
+        <span class="dot"></span>
+        <span>Tenra Pilotprojekt</span>
+      </a>
+      <div class="nav-actions">
+        <button class="toggle" id="modeToggle" aria-label="Darstellung umschalten">🌗 Darstellung</button>
+        <a class="btn ghost" href="https://tenra-demo-5fnd.vercel.app/demo.html" target="_blank">Demo ansehen</a>
+
+        <a class="btn btn-primary" href="#teilnahme">Pilot beitreten</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+    <section class="hero">
+      <h1 class="headline">Klarheit im Betriebsalltag.<br/>Ohne Schulung. Ohne Hürden.</h1>
+      <p class="sub">Tenra ist eine schlanke Oberfläche für Werkstätten & Produktionsbetriebe. Sie testen Funktionen <b>nacheinander</b> — Schritt für Schritt, ohne Überforderung. Pilotphase ab <b>1. Dezember 2025</b> (früherer Einstieg möglich).</p>
+    </section>
+
+    <section class="callout" aria-labelledby="pitch">
+      <div class="card card-pad">
+        <span class="badge">🚀 Pilot 2025 • Teilnahme kostenlos</span>
+        <h2 id="pitch" style="margin:16px 0 8px; font-size:22px; letter-spacing:-0.2px">Worum es geht</h2>
+        <ul class="list">
+          <li class="li">✅ <b>Abläufe & Aufgaben</b> sichtbar machen – ohne Zettel & Excel</li>
+          <li class="li">✅ <b>Übergaben & Hinweise</b> sauber dokumentieren – in Sekunden</li>
+          <li class="li">✅ <b>Team-Organisation</b> im Blick – wer macht was, was bleibt offen</li>
+        </ul>
+        <div class="note" style="margin-top:16px">Hinweis: Die Demo ist bewusst einfach gehalten. Sie können jede Funktion einzeln testen – zuerst Aufgaben, danach Übergaben, später Teamansicht. So entsteht Schritt für Schritt ein klares Bild – ohne alles gleichzeitig klicken zu müssen.</div>
+        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap">
+          <a class="btn btn-primary" href="#demo">Jetzt Schritt für Schritt testen</a>
+          <a class="btn ghost" href="#teilnahme">Teilnahme & Kontakt</a>
+        </div>
+      </div>
+      <div class="illus card">
+        <div class="grid" aria-hidden="true">
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+          <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Demo -->
+    <section id="demo" class="stage">
+      <div class="card card-pad">
+        <h3 style="margin:0 0 8px; font-size:18px">Demo-Steuerung</h3>
+        <p class="sub" style="font-size:14px">Wählen Sie eine Funktion aus. Jede Funktion kann <b>einzeln</b> ausprobiert werden. Nichts wird gespeichert.</p>
+        <div class="tabs" style="margin-top:10px">
+          <button class="tab active" data-demo="tasks">Aufgaben</button>
+          <button class="tab" data-demo="handover">Übergaben</button>
+          <button class="tab" data-demo="team">Team</button>
+        </div>
+
+        <div class="note" style="margin-top:14px">Kleine Spielerei: Markieren Sie Aufgaben als erledigt, priorisieren Sie Einträge oder fügen Sie Test-Items hinzu. Alles lokal, nur zum Gefühl.</div>
+      </div>
+
+      <div class="card demo-card" id="demoArea" aria-live="polite">
+        <!-- dynamic content injected by JS -->
+      </div>
+    </section>
+
+    <section id="teilnahme" style="margin-top:28px" class="card card-pad">
+  <h3 style="margin:0 0 8px; font-size:18px">Pilotphase & Teilnahme</h3>
+  <ul class="list">
+    <li class="li">📅 Start ab <b>1. Dezember 2025</b> — früherer Einstieg nach Rücksprache möglich</li>
+    <li class="li">💡 Dauer: <b>bis zu 6 Monate</b> – je nach Betrieb</li>
+    <li class="li">🟢 <b>Ausstieg jederzeit möglich</b> – ohne Kosten oder Verpflichtung</li>
+    <li class="li">💸 Teilnahme in der Pilotphase: <b>kostenlos</b></li>
+  </ul>
+  <div class="note" style="margin-top:12px">
+    Ziel der Pilotphase ist ein ehrliches Bild aus der Praxis.  
+    Keine Schulung nötig, keine komplexe Einführung – wir halten alles bewusst einfach.  
+    <br><br>
+    Sie testen nur die Bereiche, die für Sie relevant sind – ob Aufgaben, Übergaben, Schichtbuch, Planung oder Downloads.  
+    <b>Wir passen die Module individuell an Ihren Bedarf an.</b>
+  </div>
+  <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap">
+    <a class="btn btn-primary" href="#" onclick="showMailPopup()">Interesse per E-Mail melden</a>
+
+    <a class="btn ghost" href="#" onclick="window.scrollTo({top:0, behavior:'smooth'});return false;">Nach oben</a>
+  </div>
+</section>
+
+<!-- Zusatzabschnitt: Kein Schichtbetrieb -->
+<section id="keine-schicht" style="margin-top:28px" class="card card-pad">
+  <h3 style="margin:0 0 8px; font-size:18px">Kein Schichtbetrieb? Kein Problem.</h3>
+  <p class="sub" style="font-size:15px; color:var(--ink)">
+    Tenra funktioniert auch perfekt für Betriebe ohne klassische Schichten.  
+    Statt <b>Linien</b> oder <b>Abteilungen</b> können Sie z.&nbsp;B. <b>Maschinen</b>, 
+    <b>Tätigkeiten</b> oder <b>Projekte</b> hinterlegen.  
+    So lässt sich das <b>Schichtbuch</b> auch als Maschinen- oder Tätigkeitsbuch nutzen –  
+    und die <b>MA-Planung</b> als einfache Wochenübersicht.
+  </p>
+  <div class="note" style="margin-top:12px">
+    Egal ob Einzelfertigung, Werkstatt oder Büro – die Module wie  
+    <b>Ressourcen & Downloads</b>, <b>FocusPad</b> (To-Dos, Notizen, Übergaben),  
+    <b>Schichtbuch</b> (auch für Stillstände oder Ereignisse) und <b>Planer</b> (MA-Planung)  
+    passen sich flexibel an Ihren Alltag an.  
+    <br><br>
+    Für den Pilot-Test entwickeln wir genau das, was Sie brauchen – inklusive neuer Funktionen auf Wunsch.
+  </div>
+</section>
+
+<footer>
+  <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+    <span class="chip">Tenra • Pilot 2025</span>
+    <span class="chip">Kontakt: <a href="mailto:chris.patla@web.de">chris.patla@web.de</a></span>
+    <span class="chip">Demo: lokal, ohne Datenspeicherung</span>
+  </div>
+</footer>
+
+  </main>
+
+  <script>
+    // Dark / Light toggle
+    const toggleBtn = document.getElementById('modeToggle');
+    let manualDark = false;
+    toggleBtn.addEventListener('click', () => {
+      manualDark = !manualDark;
+      document.documentElement.style.filter = manualDark ? 'invert(1) hue-rotate(180deg)' : '';
+    });
+
+    // Demo data
+    const state = {
+      view: 'tasks',
+      tasks: [
+        { id: 1, title: 'Auftrag 511 vorbereiten', badge: 'Heute', done: false },
+        { id: 2, title: 'Material prüfen – Halter 23B', badge: 'Prio', done: false },
+        { id: 3, title: 'Rückmeldung Kunde Müller', badge: 'Info', done: false },
+      ],
+      notes: [
+        { id: 1, title: 'Hinweis: Bohrer 6mm stumpf', time: '08:15', tag: 'Werkzeug' },
+        { id: 2, title: 'Quali-Check an Station 3', time: '10:30', tag: 'Qualität' },
+      ],
+      team: [
+        { id: 1, name: 'A. Weber', role: 'Fertigung', status: 'verfügbar' },
+        { id: 2, name: 'M. Özdemir', role: 'Werkstatt', status: 'im Auftrag' },
+        { id: 3, name: 'J. Fischer', role: 'Montage', status: 'abwesend' },
+      ]
+    };
+
+    const area = document.getElementById('demoArea');
+
+    function render(){
+      const v = state.view;
+      if(v === 'tasks') return renderTasks();
+      if(v === 'handover') return renderHandover();
+      if(v === 'team') return renderTeam();
+    }
+
+    function el(tag, attrs={}, children=[]) {
+      const node = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if(k === 'class') node.className = v; else if(k.startsWith('on')) node.addEventListener(k.slice(2), v); else if(k === 'html') node.innerHTML = v; else node.setAttribute(k,v);
+      }
+      children.forEach(c => node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
+      return node;
+    }
+
+    function renderTasks(){
+      area.innerHTML = '';
+      const header = el('div', {class:'row'}, [
+        el('div', {class:'chip'}, ['Aufgaben (Demo)']),
+        el('button', {class:'btn', onClick: addTask}, ['+ Test-Item']),
+        el('button', {class:'btn', onClick: sortPrio}, ['Prio nach oben'])
+      ]);
+      const list = el('div', {class:'col', style:'margin-top:10px'});
+      state.tasks.forEach(t => {
+        const item = el('div', {class:'task'});
+        const left = el('div', {class:'left'});
+        const check = el('span', {class: 'check'+(t.done?' done':''), onClick: () => {t.done = !t.done; render();}});
+        const title = el('div', {}, [t.title]);
+        left.appendChild(check); left.appendChild(title);
+        const right = el('div', {class:'row'});
+        right.appendChild(el('span', {class:'pill'}, [t.badge]));
+        item.appendChild(left); item.appendChild(right);
+        list.appendChild(item);
+      });
+      area.appendChild(header); area.appendChild(list);
+    }
+
+    function addTask(){
+      const id = Math.max(...state.tasks.map(t=>t.id))+1;
+      state.tasks.push({ id, title: 'Neues Test-Item', badge: 'Neu', done:false});
+      render();
+    }
+    function sortPrio(){
+      state.tasks.sort((a,b)=> (a.badge==='Prio'? -1:1));
+      render();
+    }
+
+    function renderHandover(){
+      area.innerHTML = '';
+      const header = el('div', {class:'row'}, [
+        el('div', {class:'chip'}, ['Übergaben / Hinweise (Demo)']),
+        el('button', {class:'btn', onClick: () => {state.notes.unshift({id: Date.now(), title:'Neuer Hinweis (Demo)', time: new Date().toLocaleTimeString().slice(0,5), tag:'Info'}); render();}}, ['+ Hinweis'])
+      ]);
+      const list = el('div', {class:'col', style:'margin-top:10px'});
+      state.notes.forEach(n => {
+        const item = el('div', {class:'task'});
+        const left = el('div', {class:'left'}, [el('span', {class:'pill'}, [n.time]), el('div', {}, [n.title])]);
+        const right = el('div', {class:'row'}, [el('span', {class:'pill'}, [n.tag])]);
+        item.appendChild(left); item.appendChild(right);
+        list.appendChild(item);
+      });
+      area.appendChild(header); area.appendChild(list);
+    }
+
+    function renderTeam(){
+      area.innerHTML = '';
+      const header = el('div', {class:'row'}, [
+        el('div', {class:'chip'}, ['Teamübersicht (Demo)']),
+        el('button', {class:'btn', onClick: cycleStatus}, ['Status wechseln'])
+      ]);
+      const list = el('div', {class:'col', style:'margin-top:10px'});
+      state.team.forEach(p => {
+        const item = el('div', {class:'task'});
+        const left = el('div', {class:'left'}, [el('div', {}, [p.name+' – '+p.role])]);
+        const right = el('div', {class:'row'}, [el('span', {class:'pill'}, [p.status])]);
+        item.appendChild(left); item.appendChild(right);
+        list.appendChild(item);
+      });
+      area.appendChild(header); area.appendChild(list);
+    }
+    function cycleStatus(){
+      const order = ['verfügbar','im Auftrag','abwesend'];
+      state.team = state.team.map(p=> ({...p, status: order[(order.indexOf(p.status)+1)%order.length]}));
+      render();
+    }
+
+    // Tabs wiring
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        state.view = btn.dataset.demo;
+        render();
+      });
+    });
+
+    // Initial paint
+    render();
+  </script>
+  <script>
+function showMailPopup() {
+  const popup = document.createElement('div');
+  popup.style.position = 'fixed';
+  popup.style.top = '50%';
+  popup.style.left = '50%';
+  popup.style.transform = 'translate(-50%, -50%)';
+  popup.style.background = 'white';
+  popup.style.padding = '24px 32px';
+  popup.style.borderRadius = '16px';
+  popup.style.boxShadow = '0 10px 40px rgba(0,0,0,0.2)';
+  popup.style.textAlign = 'center';
+  popup.style.fontFamily = 'system-ui, sans-serif';
+  popup.innerHTML = `
+    <h3 style="margin-bottom:10px; font-size:18px;">📩 Kontakt</h3>
+    <p style="margin-bottom:12px; font-size:15px;">Schreiben Sie einfach an:</p>
+    <b style="font-size:17px; color:#09a66d;">chris.patla@web.de</b>
+    <br><br>
+    <button style="margin-top:12px; padding:8px 16px; border:none; background:#09a66d; color:white; border-radius:10px; cursor:pointer;">Schließen</button>
+  `;
+  document.body.appendChild(popup);
+  popup.querySelector('button').addEventListener('click', ()=>popup.remove());
+}
+</script>
+
+</body>
+</html>
