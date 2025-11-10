@@ -178,6 +178,32 @@ footer{margin:42px 0 30px;color:var(--muted);font-size:14px}
   </div>
 </section>
 
+<!-- ROI / Wirtschaftlichkeits-Berechnung -->
+<section id="roi" class="card card-pad" style="margin-top:28px">
+  <h3 style="margin:0 0 8px; font-size:18px">Was kostet Sie fehlende Übersicht?</h3>
+  <p class="sub" style="font-size:15px;color:var(--ink)">
+    Geben Sie ein, wie viele Minuten täglich durch Abstimmung, Nachfragen oder fehlende Infos verloren gehen – Tenra zeigt Ihnen, wie viel Geld das pro Jahr kostet.
+  </p>
+
+  <div class="row" style="margin-top:14px;flex-wrap:wrap;gap:10px">
+    <label>⏱ Minuten Verlust pro Tag:
+      <input id="minuten" type="number" value="30" style="width:80px;padding:6px;border-radius:8px;border:none;">
+    </label>
+    <label>👥 Mitarbeiter betroffen:
+      <input id="mitarbeiter" type="number" value="10" style="width:80px;padding:6px;border-radius:8px;border:none;">
+    </label>
+    <label>💶 Stundensatz (€):
+      <input id="satz" type="number" value="45" style="width:80px;padding:6px;border-radius:8px;border:none;">
+    </label>
+    <button class="btn btn-primary" onclick="calcROI()">Berechnen</button>
+  </div>
+
+  <div id="roiErgebnis" class="note" style="margin-top:16px;font-size:15px">
+    ⏳ Geben Sie Werte ein und klicken Sie auf „Berechnen“.
+  </div>
+</section>
+
+
 <!-- Zusatzabschnitt: Kein Schichtbetrieb -->
 <section id="keine-schicht" style="margin-top:28px" class="card card-pad">
   <h3 style="margin:0 0 8px; font-size:18px">Kein Schichtbetrieb? Kein Problem.</h3>
@@ -360,6 +386,27 @@ function showMailPopup() {
   `;
   document.body.appendChild(popup);
   popup.querySelector('button').addEventListener('click', ()=>popup.remove());
+}
+</script>
+
+
+<script>
+function calcROI(){
+  const min = +document.getElementById('minuten').value || 0;
+  const mit = +document.getElementById('mitarbeiter').value || 0;
+  const satz = +document.getElementById('satz').value || 0;
+  const stundenProTag = (min/60)*mit;
+  const euroTag = stundenProTag*satz;
+  const euroJahr = euroTag*220; // 220 Arbeitstage
+  const roiBox = document.getElementById('roiErgebnis');
+
+  roiBox.innerHTML = `
+<div style="font-size:22px;font-weight:800;color:#00c68f;margin-bottom:8px">
+≈ ${euroJahr.toLocaleString('de-DE')} € jährlicher Verlust
+</div>
+<p>Jeder Tag ohne Tenra kostet Sie <b>${euroTag.toFixed(0)} €</b>.</p>
+<p style="margin-top:8px">➡️ Starten Sie den Pilot, bevor ein anderer Betrieb diese Vorteile nutzt.</p>`;
+
 }
 </script>
 
