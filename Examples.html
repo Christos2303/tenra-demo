@@ -276,57 +276,78 @@
     </section>
 
     <!-- CASE 3 -->
-    <section class="card pad" style="margin-top:18px">
-      <div class="row" style="justify-content:space-between">
-        <h2 class="h">Fall C — Material & Kleinstillstände</h2>
-        <span class="pill">Montage • Mehrprodukt</span>
+<section class="card pad" style="margin-top:18px">
+  <div class="row" style="justify-content:space-between">
+    <h2 class="h">Fall C — Materialkoordination & kleine Unterbrechungen</h2>
+    <span class="pill">Montage • Mehrprodukt</span>
+  </div>
+
+  <div class="two" style="margin-top:10px">
+    <div>
+      <p class="muted">
+        In der Linie kam es immer wieder zu Mini-Stopps – weil Material fehlte,
+        niemand wusste, ob schon bestellt wurde, oder die Restmenge unklar war.
+        Kein technisches Problem, sondern <b>Kommunikation</b>.  
+        <br><br>
+        Tenra löst das organisatorisch: Bestellpunkte, Restmengen und Freigaben
+        sind im <b>FocusPad</b> oder <b>Schichtbuch</b> klar sichtbar.
+        Jeder sieht sofort, was bestellt, eingeschleust oder offen ist –
+        ohne Telefon, Zettel oder SAP-Suche.  
+        <br><br>
+        Ergebnis: weniger Leerlauf, sauberere Übergaben und eine stabilere Linie.
+      </p>
+
+      <div class="kpi" style="margin-top:12px">
+        <div class="box"><div class="lab">Unterbrechungen/Schicht</div><div class="val">−38 %</div></div>
+        <div class="box"><div class="lab">Zeitverlust/Schicht</div><div class="val">−24 min</div></div>
+        <div class="box"><div class="lab">Ausbringung</div><div class="val">+8 – 10 %</div></div>
+        <div class="box"><div class="lab">Jahreseffekt (1 Linie)</div><div class="val">≈ +32 000 €</div></div>
       </div>
-      <div class="two" style="margin-top:10px">
-        <div>
-          <p class="muted">Fehlende Kleinteile & Freigaben erzeugen Mikrostillstände (30–180 Sek). Tenra bündelt „Nächste Bestellpunkte“, Restmengen, Freigabe-Shortcuts. Ergebnis: weniger Staus, bessere Taktstabilität.</p>
-          <div class="kpi" style="margin-top:12px">
-            <div class="box"><div class="lab">Mikrostillstände/Schicht</div><div class="val">−47 %</div></div>
-            <div class="box"><div class="lab">Taktstabilität</div><div class="val">+19 %</div></div>
-            <div class="box"><div class="lab">Ausbringung</div><div class="val">+8–12 %</div></div>
-            <div class="box"><div class="lab">Jahreswirkung</div><div class="val">≈ +45–65 k€</div></div>
-          </div>
-        </div>
-        <div class="card pad" style="background:rgba(255,255,255,.03)">
-          <div class="h">Liniendiagramm: Ausbringung (Teile/Schicht)</div>
-          <!-- Line chart -->
-          <svg viewBox="0 0 420 220" role="img" aria-label="Ausbringung über 8 Wochen">
-            <defs>
-              <linearGradient id="g3" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stop-color="#00c68f"/>
-                <stop offset="100%" stop-color="#00a472"/>
-              </linearGradient>
-            </defs>
-            <rect x="0" y="0" width="420" height="220" fill="none"/>
-            <line x1="40" y1="180" x2="400" y2="180" stroke="rgba(255,255,255,.15)"/>
-            <line x1="40" y1="40" x2="40" y2="180" stroke="rgba(255,255,255,.15)"/>
-            <g stroke="rgba(255,255,255,.06)">
-              <line x1="40" y1="160" x2="400" y2="160"/>
-              <line x1="40" y1="140" x2="400" y2="140"/>
-              <line x1="40" y1="120" x2="400" y2="120"/>
-              <line x1="40" y1="100" x2="400" y2="100"/>
-              <line x1="40" y1="80"  x2="400" y2="80"/>
-              <line x1="40" y1="60"  x2="400" y2="60"/>
-            </g>
-            <!-- Vorher (graue Linie) -->
-            <polyline fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3"
-              points="40,150 90,158 140,155 190,162 240,160 290,166 340,164 390,168"/>
-            <!-- Nachher (grüne Linie) -->
-            <polyline fill="none" stroke="url(#g3)" stroke-width="3"
-              points="40,130 90,128 140,124 190,120 240,116 290,112 340,110 390,108"/>
-            <g fill="#9aa4b2" font-size="10">
-              <text x="58" y="196">W1</text><text x="108" y="196">W2</text><text x="158" y="196">W3</text><text x="208" y="196">W4</text>
-              <text x="258" y="196">W5</text><text x="308" y="196">W6</text><text x="358" y="196">W7</text><text x="386" y="196">W8</text>
-              <text x="260" y="40">Teile/Schicht ↑</text>
-            </g>
-          </svg>
-        </div>
-      </div>
-    </section>
+    </div>
+
+    <div class="card pad" style="background:rgba(255,255,255,.03)">
+      <div class="h">Liniendiagramm: Ausbringung (Teile / Schicht)</div>
+
+      <svg viewBox="0 0 420 220" role="img" aria-label="Ausbringung über 8 Wochen">
+        <defs>
+          <linearGradient id="g3" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#00c68f"/>
+            <stop offset="100%" stop-color="#00a472"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="420" height="220" fill="none"/>
+        <line x1="40" y1="180" x2="400" y2="180" stroke="rgba(255,255,255,.15)"/>
+        <line x1="40" y1="40"  x2="40" y2="180" stroke="rgba(255,255,255,.15)"/>
+
+        <g stroke="rgba(255,255,255,.06)">
+          <line x1="40" y1="160" x2="400" y2="160"/>
+          <line x1="40" y1="140" x2="400" y2="140"/>
+          <line x1="40" y1="120" x2="400" y2="120"/>
+          <line x1="40" y1="100" x2="400" y2="100"/>
+          <line x1="40" y1="80"  x2="400" y2="80"/>
+          <line x1="40" y1="60"  x2="400" y2="60"/>
+        </g>
+
+        <!-- Vorher (grau) -->
+        <polyline fill="none" stroke="rgba(255,255,255,.35)" stroke-width="3"
+          points="40,150 90,154 140,156 190,160 240,162 290,164 340,166 390,168"/>
+
+        <!-- Nach Tenra (grün) -->
+        <polyline fill="none" stroke="url(#g3)" stroke-width="3"
+          points="40,140 90,132 140,126 190,120 240,116 290,112 340,110 390,108"/>
+
+        <g fill="#9aa4b2" font-size="10">
+          <text x="58" y="196">W1</text><text x="108" y="196">W2</text>
+          <text x="158" y="196">W3</text><text x="208" y="196">W4</text>
+          <text x="258" y="196">W5</text><text x="308" y="196">W6</text>
+          <text x="358" y="196">W7</text><text x="386" y="196">W8</text>
+          <text x="260" y="40">Teile / Schicht ↑</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
 
     <!-- CTA -->
     <section class="card pad" id="kontakt" style="margin-top:18px">
@@ -336,7 +357,8 @@
       </div>
       <p class="sub" style="margin:8px 0 14px">Wir tragen Ihre realen Zeiten in dieselben Diagramme ein – Live-Benchmark in 7 Tagen. Keine IT-Umstellung, keine Risiken.</p>
       <div class="row">
-        <a class="btn btn-primary" href="mailto:chris.patla@web.de">Pilotplatz anfragen</a>
+        <a class="btn btn-primary" href="#" onclick="showMailPopup()">Pilot aufnehmen</a>
+
         <a class="btn ghost" href="./index.html#roi">ROI jetzt berechnen</a>
       </div>
     </section>
@@ -345,9 +367,31 @@
       <div class="row">
         <span class="pill">Tenra • Ergebnisse</span>
         <span class="pill">Anonymisierte Daten</span>
-        <span class="pill">Kontakt: <a class="btn ghost" href="mailto:chris.patla@web.de" style="padding:2px 8px">E-Mail</a></span>
+        <span class="pill">Kontakt: <a class="btn btn-primary" href="#" onclick="showMailPopup()">Kontakt aufnehmen</a>
+
       </div>
     </footer>
   </main>
+
+  <script>
+function showMailPopup() {
+  const popup = document.createElement('div');
+  Object.assign(popup.style, {
+    position:'fixed',top:'50%',left:'50%',transform:'translate(-50%,-50%)',
+    background:'#fff',color:'#0b0f14',padding:'24px 32px',borderRadius:'16px',
+    boxShadow:'0 10px 40px rgba(0,0,0,0.3)',textAlign:'center',fontFamily:'system-ui,sans-serif',zIndex:9999
+  });
+  popup.innerHTML = `
+    <h3 style="margin-bottom:10px;font-size:18px;">📩 Kontakt</h3>
+    <p style="margin-bottom:10px;">Bitte schreiben Sie direkt an:</p>
+    <b style="font-size:17px;color:#09a66d;">chris.patla@web.de</b>
+    <br><br>
+    <button style="margin-top:12px;padding:8px 16px;border:none;background:#09a66d;color:#fff;border-radius:10px;cursor:pointer;">Schließen</button>
+  `;
+  document.body.appendChild(popup);
+  popup.querySelector('button').addEventListener('click',()=>popup.remove());
+}
+</script>
+
 </body>
 </html>
