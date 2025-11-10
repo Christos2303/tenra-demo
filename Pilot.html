@@ -90,6 +90,10 @@ footer{margin:42px 0 30px;color:var(--muted);font-size:14px}
   </style>
 </head>
 <body>
+  <div id="banner" style="position:sticky;top:0;width:100%;background:#00c68f;color:#0b0f14;text-align:center;padding:8px 0;font-weight:700;font-size:15px;z-index:99">
+  🚀 Nur 5 Plätze im Tenra-Pilot 2025 – Start am 1. Dezember • Jetzt bewerben
+</div>
+
   <nav class="nav">
     <div class="container nav-inner">
       <a class="brand" href="#">
@@ -107,9 +111,18 @@ footer{margin:42px 0 30px;color:var(--muted);font-size:14px}
 
   <main class="container">
     <section class="hero">
-      <h1 class="headline">Klarheit im Betriebsalltag.<br/>Ohne Schulung. Ohne Hürden.</h1>
-      <p class="sub">Tenra ist eine schlanke Oberfläche für Werkstätten & Produktionsbetriebe. Sie testen Funktionen <b>nacheinander</b> — Schritt für Schritt, ohne Überforderung. Pilotphase ab <b>1. Dezember 2025</b> (früherer Einstieg möglich).</p>
-    </section>
+  <h1 class="headline">
+    <span style="color:#00c68f">Jeder Tag kostet Sie Geld.</span><br>
+    Tenra zeigt, wo – und stoppt es in 7 Tagen.
+  </h1>
+  <p class="sub">
+    Jede Minute Chaos, Rückfrage oder Fehlabsprache kostet bares Geld.  
+    <b>Tenra</b> schafft Klarheit – ohne Schulung, ohne Aufwand.  
+    <br><br>
+    <span style="color:#00c68f">Pilotstart am 1. Dezember 2025 • Nur 5 Plätze</span>
+  </p>
+</section>
+
 
     <section class="callout" aria-labelledby="pitch">
       <div class="card card-pad">
@@ -156,27 +169,28 @@ footer{margin:42px 0 30px;color:var(--muted);font-size:14px}
       </div>
     </section>
 
-    <section id="teilnahme" style="margin-top:28px" class="card card-pad">
-  <h3 style="margin:0 0 8px; font-size:18px">Pilotphase & Teilnahme</h3>
+    <section id="teilnahme" class="card card-pad" style="margin-top:28px">
+  <h3 style="margin:0 0 8px;font-size:18px">Pilotphase & Teilnahme</h3>
   <ul class="list">
-    <li class="li">📅 Start ab <b>1. Dezember 2025</b> — früherer Einstieg nach Rücksprache möglich</li>
-    <li class="li">💡 Dauer: <b>bis zu 6 Monate</b> – je nach Betrieb</li>
-    <li class="li">🟢 <b>Ausstieg jederzeit möglich</b> – ohne Kosten oder Verpflichtung</li>
-    <li class="li">💸 Teilnahme in der Pilotphase: <b>kostenlos</b></li>
+    <li class="li">📅 Start: <b>1. Dezember 2025</b> – nur 5 Betriebe im ersten Durchlauf</li>
+    <li class="li">⏳ Laufzeit: <b>3 bis 6 Monate</b> gemeinsame Optimierung im Echtbetrieb</li>
+    <li class="li">💸 Teilnahmegebühr: <b>0 € (komplett von Tenra übernommen)</b></li>
+    <li class="li">📊 Zielwerte: <b>–25 % Kommunikationszeit • +100 % Transparenz</b></li>
+    <li class="li">🤝 Ausstieg jederzeit möglich – kein Vertrag, kein Risiko</li>
   </ul>
   <div class="note" style="margin-top:12px">
-    Ziel der Pilotphase ist ein ehrliches Bild aus der Praxis.  
-    Keine Schulung nötig, keine komplexe Einführung – wir halten alles bewusst einfach.  
-    <br><br>
-    Sie testen nur die Bereiche, die für Sie relevant sind – ob Aufgaben, Übergaben, Schichtbuch, Planung oder Downloads.  
-    <b>Wir passen die Module individuell an Ihren Bedarf an.</b>
+    Werden Sie Teil der ersten Werkbetriebe, die Tenra nutzen.  
+    Ziel ist kein Test, sondern ein gemeinsamer Beweis:  
+    <b>Wie viel Zeit und Geld durch klare Abläufe zurückgewonnen wird.</b><br><br>
+    Alle Teilnehmer erhalten direkten Kontakt zum Entwicklerteam,  
+    Einfluss auf neue Module und nach Abschluss eine offizielle Referenz + bevorzugten Zugang für 2026-Lizenzen.
   </div>
-  <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap">
-    <a class="btn btn-primary" href="#" onclick="showMailPopup()">Interesse per E-Mail melden</a>
-
-    <a class="btn ghost" href="#" onclick="window.scrollTo({top:0, behavior:'smooth'});return false;">Nach oben</a>
+  <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+    <a class="btn btn-primary" href="#" onclick="showMailPopup()">Pilotplatz anfragen</a>
+    <a class="btn ghost" href="#roi">Wirtschaftlichkeit berechnen</a>
   </div>
 </section>
+
 
 <!-- ROI / Wirtschaftlichkeits-Berechnung -->
 <section id="roi" class="card card-pad" style="margin-top:28px">
@@ -399,8 +413,10 @@ function calcROI(){
   const euroTag = stundenProTag*satz;
   const euroJahr = euroTag*220; // 220 Arbeitstage
   const roiBox = document.getElementById('roiErgebnis');
+  
 
   roiBox.innerHTML = `
+  <hr style="border:none;border-top:1px solid rgba(255,255,255,0.1);margin:40px 0">
 <div style="font-size:22px;font-weight:800;color:#00c68f;margin-bottom:8px">
 ≈ ${euroJahr.toLocaleString('de-DE')} € jährlicher Verlust
 </div>
