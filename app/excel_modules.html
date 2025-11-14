@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tenra – Excel-Module</title>
+  <meta name="color-scheme" content="dark light" />
+
+  <!-- SheetJS für Excel-Parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg: radial-gradient(1200px 800px at 20% 0%, #0f1115 0%, #0b0d10 45%, #07080b 100%);
+      --panel: rgba(255,255,255,0.08);
+      --panel-soft: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.12);
+      --text: #f3f6fa;
+      --muted: #8f98a5;
+      --accent: #00c6ff;
+      --accent2:#007aff;
+      --radius: 20px;
+      --glass-blur: blur(18px) saturate(140%);
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    }
+
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-size:15px;
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+    }
+
+    header{
+      position:sticky;top:0;z-index:5;
+      background:rgba(5,6,10,0.82);
+      backdrop-filter:var(--glass-blur);
+      border-bottom:1px solid var(--border);
+      padding:14px 24px;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;}
+    .logo-dot{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#007aff,#00ffa3)}
+    .brand span:last-child{letter-spacing:.15px}
+    .header-right{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);}
+    .pill{
+      padding:6px 10px;border-radius:999px;border:1px solid var(--border);
+      background:rgba(255,255,255,0.04);
+    }
+
+    main{
+      flex:1;
+      max-width:1180px;
+      margin:26px auto 22px;
+      padding:0 22px;
+      display:grid;
+      grid-template-columns:320px minmax(0,1fr);
+      gap:20px;
+      width:100%;
+    }
+
+    @media (max-width:900px){
+      main{grid-template-columns:1fr;}
+    }
+
+    .panel{
+      background:var(--panel);
+      border-radius:var(--radius);
+      border:1px solid var(--border);
+      backdrop-filter:var(--glass-blur);
+      box-shadow:0 18px 40px rgba(0,0,0,0.55);
+    }
+
+    /* Sidebar */
+    .sidebar{
+      padding:16px 16px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+    .sidebar-header{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:10px;
+    }
+    .sidebar-title{
+      font-size:16px;
+      font-weight:600;
+      letter-spacing:.03em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+    button{
+      font:inherit;
+      cursor:pointer;
+      border-radius:999px;
+      border:none;
+      padding:8px 14px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:linear-gradient(135deg,var(--accent2),var(--accent));
+      color:#fff;
+      box-shadow:0 10px 25px rgba(0,198,255,0.3);
+      transition:.15s transform ease,.15s box-shadow ease,.15s opacity ease;
+    }
+    button:hover{transform:translateY(-1px);box-shadow:0 14px 30px rgba(0,198,255,0.38);}
+    button:active{transform:translateY(0);box-shadow:0 8px 16px rgba(0,0,0,0.5);}
+    button.small{
+      padding:4px 9px;font-size:12px;border-radius:12px;
+      box-shadow:none;background:rgba(255,255,255,0.08);
+    }
+    button.small.danger{background:linear-gradient(135deg,#ff4b5c,#ff1744);}
+    button.small:hover{box-shadow:0 6px 14px rgba(0,0,0,0.4);}
+
+    .upload-hint{
+      font-size:13px;color:var(--muted);
+    }
+
+    .module-list{
+      margin-top:4px;
+      border-radius:14px;
+      padding:4px;
+      background:var(--panel-soft);
+      max-height:60vh;
+      overflow:auto;
+    }
+
+    .module-item{
+      position:relative;
+      padding:10px 10px;
+      border-radius:10px;
+      border:1px solid transparent;
+      margin:2px 0;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      cursor:pointer;
+      transition:.15s background ease,.15s border-color ease,.15s transform ease;
+    }
+    .module-item:hover{
+      background:rgba(255,255,255,0.06);
+      transform:translateY(-1px);
+    }
+    .module-item.active{
+      background:linear-gradient(135deg,rgba(0,122,255,0.25),rgba(0,198,255,0.28));
+      border-color:rgba(0,198,255,0.8);
+    }
+    .module-item .name{font-size:14px;font-weight:600;}
+    .module-item .meta{font-size:12px;color:var(--muted);}
+    .badge{
+      align-self:flex-start;
+      margin-top:2px;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      background:rgba(0,0,0,0.45);
+      color:#ccefff;
+      border:1px solid rgba(0,255,255,0.3);
+    }
+
+    /* Main panel */
+    .main-panel{
+      padding:16px 18px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    .main-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:14px;
+    }
+    .main-header-left h2{
+      margin:0;font-size:20px;letter-spacing:.03em;
+    }
+    .main-header-left p{
+      margin:4px 0 0;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .tag-row{
+      display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--muted);
+      margin-top:4px;
+    }
+    .tag{
+      padding:3px 8px;border-radius:999px;border:1px solid rgba(255,255,255,0.12);
+      background:rgba(0,0,0,0.35);
+    }
+
+    .search-bar{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-top:6px;
+    }
+    .search-bar input{
+      flex:1;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(0,0,0,0.45);
+      color:var(--text);
+      font:inherit;
+      outline:none;
+    }
+    .search-bar input::placeholder{color:#6c7380;}
+
+    .table-box{
+      margin-top:4px;
+      border-radius:16px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,0.08);
+      background:rgba(4,5,8,0.8);
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+    th,td{
+      padding:10px 12px;
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      text-align:left;
+    }
+    th{
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+      background:rgba(255,255,255,0.02);
+    }
+    tbody tr:hover{background:rgba(255,255,255,0.03);}
+    td.actions{
+      width:90px;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .no-data{
+      text-align:center;
+      padding:32px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .input-row{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,255,255,0.08);
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+    .input-row input{
+      padding:6px 9px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      background:rgba(0,0,0,0.5);
+      color:var(--text);
+      font-size:13px;
+      min-width:140px;
+      flex:1 1 150px;
+      outline:none;
+    }
+    .input-row input::placeholder{color:#6c7380;}
+
+    .muted{color:var(--muted);font-size:13px;}
+
+    footer{
+      padding:10px 20px 16px;
+      text-align:center;
+      color:var(--muted);
+      font-size:12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="logo-dot"></span>
+    <span>Tenra – Excel-Module</span>
+  </div>
+  <div class="header-right">
+    <span id="userInfo" class="pill">Lade Benutzer…</span>
+    <span id="today"></span>
+  </div>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside class="panel sidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="sidebar-title">Module</div>
+        <div class="upload-hint">Erstelle Module direkt aus Excel-Dateien.</div>
+      </div>
+      <button id="uploadBtn">➕ Modul aus Excel</button>
+      <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none" />
+    </div>
+
+    <div class="module-list" id="moduleList">
+      <div class="no-data">Lade Module…</div>
+    </div>
+  </aside>
+
+  <!-- MAIN PANEL -->
+  <section class="panel main-panel">
+    <div id="noModuleSelected">
+      <div class="main-header">
+        <div class="main-header-left">
+          <h2>Keine Auswahl</h2>
+          <p>Wähle links ein Modul oder lade eine Excel-Datei hoch, um zu starten.</p>
+        </div>
+      </div>
+      <div class="table-box">
+        <div class="no-data">Noch kein Modul ausgewählt.</div>
+      </div>
+    </div>
+
+    <div id="moduleDetail" style="display:none;">
+      <div class="main-header">
+        <div class="main-header-left">
+          <h2 id="moduleTitle">Modul</h2>
+          <p id="moduleMeta">Beschreibung & Datei</p>
+          <div class="tag-row">
+            <span class="tag" id="tagCreated"></span>
+            <span class="tag" id="tagRecords"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="In den Daten suchen…" />
+      </div>
+
+      <div class="table-box">
+        <table>
+          <thead>
+            <tr id="tableHead">
+              <!-- dynamische Spalten -->
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <!-- Zeilen -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="input-row" id="insertForm">
+        <!-- Felder + Button -->
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>© Tenra Plattform – Excel-Module</footer>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  // === Supabase Setup ===
+  const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCJ9";
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // === State ===
+  const state = {
+    user: null,
+    role: null,
+    firma_id: null,
+    modules: [],
+    currentModule: null,
+    fields: [],
+    rows: []
+  };
+
+  // === Elemente ===
+  const userInfoEl       = document.getElementById("userInfo");
+  const todayEl          = document.getElementById("today");
+  const moduleListEl     = document.getElementById("moduleList");
+  const noModuleEl       = document.getElementById("noModuleSelected");
+  const moduleDetailEl   = document.getElementById("moduleDetail");
+  const moduleTitleEl    = document.getElementById("moduleTitle");
+  const moduleMetaEl     = document.getElementById("moduleMeta");
+  const tagCreatedEl     = document.getElementById("tagCreated");
+  const tagRecordsEl     = document.getElementById("tagRecords");
+  const tableHeadEl      = document.getElementById("tableHead");
+  const tableBodyEl      = document.getElementById("tableBody");
+  const insertFormEl     = document.getElementById("insertForm");
+  const searchInputEl    = document.getElementById("searchInput");
+  const uploadBtn        = document.getElementById("uploadBtn");
+  const excelInput       = document.getElementById("excelInput");
+
+  todayEl.textContent = new Date().toLocaleDateString("de-DE", {
+    weekday:"long", day:"2-digit", month:"2-digit", year:"numeric"
+  });
+
+  // =========================================================
+  // INIT
+  // =========================================================
+  (async function init(){
+    // Session holen
+    const { data:{session} } = await supabase.auth.getSession();
+    if(!session){
+      alert("Bitte zuerst anmelden.");
+      window.location.href = "/login.html";
+      return;
+    }
+    state.user = session.user;
+
+    // Firmenzuordnung + Rolle
+    const { data:fu, error:fuErr } = await supabase
+      .from("firmen_user")
+      .select("firma_id, role, status")
+      .eq("user_id", state.user.id)
+      .eq("status", "accepted")
+      .maybeSingle();
+
+    if(fuErr){
+      console.error(fuErr);
+      alert("Fehler beim Laden der Firmenzuordnung.");
+      return;
+    }
+    if(!fu){
+      alert("Kein aktiver Firmenzugang.");
+      return;
+    }
+
+    state.firma_id = fu.firma_id;
+    state.role     = fu.role;
+
+    userInfoEl.textContent = `${state.user.email} · ${state.role}`;
+
+    await loadModules();
+    wireEvents();
+  })();
+
+  // =========================================================
+  // EVENTS
+  // =========================================================
+  function wireEvents(){
+    uploadBtn.addEventListener("click", () => {
+      excelInput.click();
+    });
+
+    excelInput.addEventListener("change", handleExcelUpload);
+
+    searchInputEl.addEventListener("input", () => {
+      renderTable();
+    });
+  }
+
+  // =========================================================
+  // MODULE LADEN + RENDERN
+  // =========================================================
+  async function loadModules(){
+    moduleListEl.innerHTML = `<div class="no-data">Lade Module…</div>`;
+
+    const { data, error } = await supabase
+      .from("excel_modules")
+      .select("*")
+      .eq("firma_id", state.firma_id)
+      .order("created_at",{ascending:false});
+
+    if(error){
+      console.error(error);
+      moduleListEl.innerHTML = `<div class="no-data">Fehler beim Laden der Module.</div>`;
+      return;
+    }
+
+    state.modules = data || [];
+    renderModuleList();
+  }
+
+  function renderModuleList(){
+    if(!state.modules.length){
+      moduleListEl.innerHTML = `<div class="no-data">Noch keine Module vorhanden. Lade eine Excel-Datei hoch, um zu starten.</div>`;
+      noModuleEl.style.display = "block";
+      moduleDetailEl.style.display = "none";
+      return;
+    }
+
+    moduleListEl.innerHTML = "";
+    for(const m of state.modules){
+      const div = document.createElement("div");
+      div.className = "module-item" + (state.currentModule && state.currentModule.id === m.id ? " active" : "");
+      div.dataset.id = m.id;
+
+      const created = m.created_at ? new Date(m.created_at).toLocaleString("de-DE") : "";
+
+      div.innerHTML = `
+        <span class="name">${m.name}</span>
+        <span class="meta">${m.excel_filename || "Ohne Dateiname"}</span>
+        <span class="meta">${created}</span>
+        <span class="badge">Excel-Modul</span>
+      `;
+
+      div.addEventListener("click", () => selectModule(m.id));
+      moduleListEl.appendChild(div);
+    }
+  }
+
+  async function selectModule(id){
+    const mod = state.modules.find(m => m.id === id);
+    if(!mod) return;
+
+    state.currentModule = mod;
+    renderModuleList();
+
+    noModuleEl.style.display    = "none";
+    moduleDetailEl.style.display= "block";
+
+    moduleTitleEl.textContent = mod.name;
+    moduleMetaEl.textContent  =
+      (mod.description || "Kein Beschreibungstext.") +
+      (mod.excel_filename ? ` · Datei: ${mod.excel_filename}` : "");
+
+    const created = mod.created_at ? new Date(mod.created_at).toLocaleString("de-DE") : "";
+    tagCreatedEl.textContent = created ? `Erstellt: ${created}` : "";
+    tagRecordsEl.textContent = "";
+
+    await loadFieldsForModule();
+    await loadRowsForModule();
+  }
+
+  // =========================================================
+  // FELDER + FORM
+  // =========================================================
+  async function loadFieldsForModule(){
+    insertFormEl.innerHTML = `<span class="muted">Lade Felder…</span>`;
+
+    const { data, error } = await supabase
+      .from("excel_module_fields")
+      .select("*")
+      .eq("module_id", state.currentModule.id)
+      .order("position",{ascending:true});
+
+    if(error){
+      console.error(error);
+      insertFormEl.innerHTML = `<span class="muted">Fehler beim Laden der Felder.</span>`;
+      return;
+    }
+
+    state.fields = data || [];
+    renderFormAndHead();
+  }
+
+  function renderFormAndHead(){
+    // Tabellenkopf
+    tableHeadEl.innerHTML = "";
+    for(const f of state.fields){
+      const th = document.createElement("th");
+      th.textContent = f.label;
+      tableHeadEl.appendChild(th);
+    }
+    const thActions = document.createElement("th");
+    thActions.textContent = "Aktionen";
+    tableHeadEl.appendChild(thActions);
+
+    // Insert-Formular
+    if(!state.fields.length){
+      insertFormEl.innerHTML = `<span class="muted">Dieses Modul besitzt noch keine Felder.</span>`;
+      return;
+    }
+
+    insertFormEl.innerHTML = "";
+    for(const f of state.fields){
+      const input = document.createElement("input");
+      input.id = "field_" + f.name;
+      input.placeholder = f.label;
+      insertFormEl.appendChild(input);
+    }
+    const btn = document.createElement("button");
+    btn.textContent = "Zeile hinzufügen";
+    btn.addEventListener("click", addRow);
+    insertFormEl.appendChild(btn);
+  }
+
+  // =========================================================
+  // ZEILEN LADEN + TABELLE
+  // =========================================================
+  async function loadRowsForModule(){
+    tableBodyEl.innerHTML = `<tr><td class="no-data" colspan="${state.fields.length+1}">Lade Daten…</td></tr>`;
+
+    const { data, error } = await supabase
+      .from("excel_module_rows")
+      .select("*")
+      .eq("module_id", state.currentModule.id)
+      .order("created_at",{ascending:true});
+
+    if(error){
+      console.error(error);
+      tableBodyEl.innerHTML = `<tr><td class="no-data" colspan="${state.fields.length+1}">Fehler beim Laden der Daten.</td></tr>`;
+      return;
+    }
+
+    state.rows = data || [];
+    tagRecordsEl.textContent = `Einträge: ${state.rows.length}`;
+    renderTable();
+  }
+
+  function renderTable(){
+    if(!state.rows.length){
+      tableBodyEl.innerHTML = `<tr><td class="no-data" colspan="${state.fields.length+1}">Noch keine Daten in diesem Modul.</td></tr>`;
+      return;
+    }
+
+    const query = (searchInputEl.value || "").toLowerCase();
+    const filtered = state.rows.filter(r => {
+      if(!query) return true;
+      const s = JSON.stringify(r.data || {}).toLowerCase();
+      return s.includes(query);
+    });
+
+    if(!filtered.length){
+      tableBodyEl.innerHTML = `<tr><td class="no-data" colspan="${state.fields.length+1}">Keine Zeilen entsprechen der Suche.</td></tr>`;
+      return;
+    }
+
+    tableBodyEl.innerHTML = "";
+    for(const row of filtered){
+      const tr = document.createElement("tr");
+
+      for(const f of state.fields){
+        const td = document.createElement("td");
+        const val = row.data && row.data[f.label] != null ? row.data[f.label] : "";
+        td.textContent = val;
+        tr.appendChild(td);
+      }
+
+      const tdActions = document.createElement("td");
+      tdActions.className = "actions";
+
+      const canEdit = state.role === "owner" || state.role === "admin" || row.created_by === state.user.id;
+
+      if(canEdit){
+        const btnEdit = document.createElement("button");
+        btnEdit.className = "small";
+        btnEdit.textContent = "✏";
+        btnEdit.addEventListener("click", () => editRow(row.id));
+
+        const btnDel = document.createElement("button");
+        btnDel.className = "small danger";
+        btnDel.textContent = "🗑";
+        btnDel.addEventListener("click", () => deleteRow(row.id));
+
+        tdActions.appendChild(btnEdit);
+        tdActions.appendChild(btnDel);
+      }else{
+        tdActions.innerHTML = `<span class="muted">Nur lesen</span>`;
+      }
+
+      tr.appendChild(tdActions);
+      tableBodyEl.appendChild(tr);
+    }
+  }
+
+  // =========================================================
+  // ZEILE HINZUFÜGEN / LÖSCHEN / EDITIEREN
+  // =========================================================
+  async function addRow(){
+    if(!state.currentModule || !state.fields.length) return;
+
+    const dataObj = {};
+    for(const f of state.fields){
+      const input = document.getElementById("field_" + f.name);
+      dataObj[f.label] = input ? input.value : null;
+    }
+
+    const { error } = await supabase.from("excel_module_rows").insert({
+      module_id: state.currentModule.id,
+      firma_id : state.firma_id,
+      data     : dataObj,
+      created_by: state.user.id
+    });
+
+    if(error){
+      console.error(error);
+      alert("Fehler beim Einfügen der Zeile.");
+      return;
+    }
+
+    // Felder leeren
+    for(const f of state.fields){
+      const input = document.getElementById("field_" + f.name);
+      if(input) input.value = "";
+    }
+
+    await loadRowsForModule();
+  }
+
+  async function deleteRow(id){
+    if(!confirm("Zeile wirklich löschen?")) return;
+
+    const { error } = await supabase
+      .from("excel_module_rows")
+      .delete()
+      .eq("id", id);
+
+    if(error){
+      console.error(error);
+      alert("Fehler beim Löschen der Zeile.");
+      return;
+    }
+
+    await loadRowsForModule();
+  }
+
+  async function editRow(id){
+    const row = state.rows.find(r => r.id === id);
+    if(!row) return;
+
+    const canEdit = state.role === "owner" || state.role === "admin" || row.created_by === state.user.id;
+    if(!canEdit){
+      alert("Keine Berechtigung zum Bearbeiten dieser Zeile.");
+      return;
+    }
+
+    const newData = { ...(row.data || {}) };
+
+    for(const f of state.fields){
+      const currentVal = newData[f.label] ?? "";
+      const val = prompt(`Neuer Wert für "${f.label}":`, currentVal);
+      if(val === null) return; // Abbruch
+      newData[f.label] = val;
+    }
+
+    const { error } = await supabase
+      .from("excel_module_rows")
+      .update({ data:newData })
+      .eq("id", id);
+
+    if(error){
+      console.error(error);
+      alert("Fehler beim Aktualisieren der Zeile.");
+      return;
+    }
+
+    await loadRowsForModule();
+  }
+
+  // =========================================================
+  // EXCEL-UPLOAD → MODUL + FELDER + ZEILEN
+  // =========================================================
+  async function handleExcelUpload(evt){
+    const file = evt.target.files[0];
+    if(!file) return;
+
+    try{
+      if(!state.firma_id || !state.user){
+        alert("Session nicht verfügbar.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+
+      reader.onload = async (e) => {
+        try{
+          const data = new Uint8Array(e.target.result);
+          const wb   = XLSX.read(data,{type:"array"});
+
+          const sheetName = wb.SheetNames[0];
+          const sheet     = wb.Sheets[sheetName];
+
+          const json = XLSX.utils.sheet_to_json(sheet,{header:1});
+          if(json.length < 2){
+            alert("Excel hat zu wenig Daten (mind. Kopfzeile + eine Zeile).");
+            return;
+          }
+
+          const headers = json[0];
+          const rows    = json.slice(1);
+
+          const moduleName = prompt("Name für dieses Modul:", file.name.replace(/\.(xlsx|xls|csv)$/i,""));
+          if(!moduleName) return;
+
+          // Modul anlegen
+          const { data:mod, error:modErr } = await supabase
+            .from("excel_modules")
+            .insert({
+              firma_id       : state.firma_id,
+              name           : moduleName,
+              excel_filename : file.name,
+              excel_sheet_name: sheetName,
+              created_by     : state.user.id
+            })
+            .select()
+            .single();
+
+          if(modErr){
+            console.error(modErr);
+            alert("Fehler beim Anlegen des Moduls.");
+            return;
+          }
+
+          const module_id = mod.id;
+
+          // Felder anlegen
+          const fieldsToInsert = headers.map((h,idx)=>({
+            module_id,
+            name: String(h || "")
+              .toLowerCase()
+              .trim()
+              .replace(/\s+/g,"_")
+              .replace(/[^a-z0-9_]/g,""),
+            label: String(h || ""),
+            type: "text",
+            position: idx,
+            is_required:false
+          }));
+
+          const { error:fieldErr } = await supabase
+            .from("excel_module_fields")
+            .insert(fieldsToInsert);
+
+          if(fieldErr){
+            console.error(fieldErr);
+            alert("Fehler beim Anlegen der Felder.");
+            return;
+          }
+
+          // Zeilen anlegen
+          const rowInserts = rows.map(r => {
+            const obj = {};
+            headers.forEach((h,i)=>{
+              obj[String(h || "")] = r[i] ?? null;
+            });
+            return {
+              module_id,
+              firma_id: state.firma_id,
+              data: obj,
+              created_by: state.user.id
+            };
+          });
+
+          if(rowInserts.length){
+            const { error:rowsErr } = await supabase
+              .from("excel_module_rows")
+              .insert(rowInserts);
+            if(rowsErr){
+              console.error(rowsErr);
+              alert("Fehler beim Anlegen der Datenzeilen.");
+              return;
+            }
+          }
+
+          // Module neu laden und neues Modul auswählen
+          await loadModules();
+          await selectModule(module_id);
+          alert("Excel-Modul wurde erfolgreich erstellt.");
+
+        }catch(err){
+          console.error(err);
+          alert("Fehler beim Verarbeiten der Excel-Datei.");
+        }finally{
+          evt.target.value = "";
+        }
+      };
+
+    }catch(err){
+      console.error(err);
+      alert("Fehler beim Upload.");
+      evt.target.value = "";
+    }
+  }
+</script>
+</body>
+</html>
