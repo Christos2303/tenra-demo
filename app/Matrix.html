@@ -9,6 +9,366 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+
+/* =========================
+   TENRA ACADEMY / TUTORIAL
+   ========================= */
+
+#tutorialContainer {
+  padding: 12px 4px 4px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: fadeIn 0.25s ease;
+}
+
+.tutorial-header-text {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.tutorial-cards-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.tutorial-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.35;
+  transition: 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+html[data-theme="dark"] .tutorial-card {
+  backdrop-filter: blur(18px) saturate(160%);
+  background: rgba(15,23,42,0.92);
+  border: 1px solid rgba(148,163,184,0.45);
+  box-shadow: 0 10px 26px rgba(15,23,42,0.6);
+  color: var(--text-dark);
+}
+html[data-theme="light"] .tutorial-card {
+  backdrop-filter: blur(16px) saturate(150%);
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(148,163,184,0.4);
+  box-shadow: 0 10px 24px rgba(15,23,42,0.14);
+  color: var(--text-light);
+}
+
+.tutorial-card-title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tutorial-card-sub {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.tutorial-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 14px 30px rgba(15,23,42,0.8);
+  border-color: var(--accent);
+}
+.tutorial-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 16px 36px rgba(22,163,74,0.55);
+}
+
+/* Suchfeld im Tutorial */
+#tutorialSearch {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  outline: none;
+  border: 1px solid rgba(148,163,184,0.55);
+  margin-bottom: 4px;
+}
+
+html[data-theme="dark"] #tutorialSearch {
+  background: rgba(15,23,42,0.95);
+  color: var(--text-dark);
+  box-shadow: 0 10px 26px rgba(15,23,42,0.7);
+}
+html[data-theme="light"] #tutorialSearch {
+  background: rgba(255,255,255,0.96);
+  color: var(--text-light);
+  box-shadow: 0 10px 24px rgba(15,23,42,0.16);
+}
+
+#tutorialSearch::placeholder {
+  opacity: 0.7;
+}
+
+/* Content-Bereich rechts unter den Cards */
+.tutorial-content {
+  margin-top: 6px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+html[data-theme="dark"] .tutorial-content {
+  background: rgba(15,23,42,0.96);
+  border: 1px solid rgba(148,163,184,0.6);
+}
+html[data-theme="light"] .tutorial-content {
+  background: rgba(255,255,255,0.98);
+  border: 1px solid rgba(148,163,184,0.5);
+}
+
+.tutorial-section {
+  margin-bottom: 10px;
+}
+.tutorial-section h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.tutorial-section p {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+.tutorial-section ul {
+  margin: 0 0 4px 18px;
+  padding: 0;
+  font-size: 13px;
+}
+.tutorial-section li {
+  margin-bottom: 3px;
+}
+
+/* kleine Info-Chips im Tutorial */
+.tutorial-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.tutorial-chip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.7);
+}
+html[data-theme="dark"] .tutorial-chip {
+  background: rgba(15,23,42,0.9);
+}
+html[data-theme="light"] .tutorial-chip {
+  background: rgba(255,255,255,0.95);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+    /* Sidebar scrollbar unsichtbar machen */
+.panel {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / Edge */
+}
+
+.panel::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari */
+}
+
+
+    /* --- FULLSCREEN ANIMATIONEN (APPLE STYLE) --- */
+
+    /* Scrollbar in der Modulliste unsichtbar machen */
+.module-list {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE / Edge */
+}
+
+.module-list::-webkit-scrollbar {
+  display: none;                /* Chrome, Safari */
+}
+
+
+body.is-fullscreen .layout {
+  grid-template-columns: 0px 1fr !important;
+  transition: grid-template-columns 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+body.is-fullscreen .panel:first-child {
+  opacity: 0;
+  transform: translateX(-30px);
+  pointer-events: none;
+  transition:
+    opacity 0.25s ease,
+    transform 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+body.is-fullscreen .grid-shell {
+  border-radius: 0px !important;
+  border: none !important;
+  box-shadow: none !important;
+  animation: gridExpand 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+@keyframes gridExpand {
+  from { transform: scale(0.97) translateY(10px); opacity: 0.4; }
+  to   { transform: scale(1)      translateY(0);    opacity: 1; }
+}
+
+/* FLOATING TOOLBAR */
+body.is-fullscreen .grid-top-bar {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 120px);
+  max-width: 1400px;
+  border-radius: 14px;
+  padding: 8px 14px;
+  backdrop-filter: blur(18px) saturate(150%);
+  z-index: 9999;
+
+  transition:
+    width 0.25s ease,
+    top 0.25s ease,
+    opacity 0.25s ease,
+    background 0.25s ease;
+}
+
+body.is-fullscreen .grid-wrapper {
+  max-height: calc(100vh - 90px) !important;
+  margin-top: 65px;
+}
+
+    html[data-theme="light"] .dropdown-menu {
+  background: rgba(255,255,255,0.89);
+  border: 1px solid rgba(15,23,42,0.15);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+html[data-theme="light"] .dropdown {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid rgba(0,0,0,0.12);
+  color: #0b1120;
+}
+
+html[data-theme="light"] .dropdown-item:hover {
+  background: rgba(12,123,72,0.15); /* soft green highlight */
+}
+
+html[data-theme="light"] .dropdown-selected {
+  color: #0b1120;
+}
+
+html[data-theme="light"] .dropdown-arrow {
+  color: #0b1120;
+}
+
+
+
+#moduleSearch {
+  position: relative;
+  z-index: 100000;
+}
+
+
+
+
+.dropdown.closing .dropdown-menu {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  transform: translateY(-4px) scale(0.98) !important;
+}
+    .dropdown.open {
+  transform: translateY(0) scale(1.015);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+   .dropdown {
+  position: relative;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: 0.2s ease;
+}
+
+.dropdown:hover {
+  border-color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+
+.dropdown-arrow {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+
+.dropdown.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+
+   background: rgba(15,23,42,0.89); /* fast komplett undurchsichtig */
+  border: 1px solid rgba(255,255,255,0.2);
+   backdrop-filter: blur(12px) saturate(160%);
+  border-radius: 12px;
+
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+
+  transition:
+    max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+
+  z-index: 9999;
+}
+
+.dropdown.open .dropdown-menu {
+  max-height: 260px;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+
+.dropdown-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: 0.15s ease;
+  font-size: 13px;
+}
+
+.dropdown-item:hover {
+  background: rgba(34,197,94,0.18);
+}
+
+
 .sel {
   width: 100%;
   padding: 8px 12px;
@@ -763,6 +1123,9 @@ table.sheet td.excel-cell {
 .dept-btn:hover {
   color: var(--accent);
 }
+body.is-fullscreen {
+  overflow: hidden;
+}
 
   </style>
 </head>
@@ -782,26 +1145,52 @@ table.sheet td.excel-cell {
     <!-- SIDEBAR -->
     <div class="panel">
       <div class="upload-area">
-        <button id="uploadBtn" type="button">➕ Excel / CSV importieren</button>
+        <button id="uploadBtn" type="button">➕ Tabellendatei / CSV importieren</button>
         <button id="newEmptyModuleBtn" class="ghost small" type="button">+ Leeres Modul</button>
         <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
-      <div class="info-line"><strong>Abteilung</strong></div>
-<select id="matrix-abteilung" class="sel">
-  <option value="">– Lade Abteilungen –</option>
-</select>
+      
+
+ <div class="info-line"><strong>Module dieser Firma</strong></div>
+
+      <input id="moduleSearch"
+       placeholder="Module suchen…"
+       style="
+         width:100%;
+         padding:8px 12px;
+         margin:8px 0;
+         border-radius:10px;
+         border:1px solid rgba(148,163,184,0.35);
+         background:rgba(255,255,255,0.07);
+         backdrop-filter:blur(6px);
+         font-size:13px;
+       ">
+<div class="info-line"><strong>Abteilung</strong></div>
+<div id="deptDropdown" class="dropdown">
+  <div class="dropdown-selected">– Abteilung wählen –</div>
+  <div class="dropdown-arrow">▼</div>
+  <div class="dropdown-menu" id="deptMenu"></div>
+</div>
+
+
 
 
 
 <div class="sep"></div>
 
-      <div class="info-line"><strong>Module dieser Firma</strong></div>
+     
+
       <div id="moduleList" class="module-list">Lade Module…</div>
     </div>
 
     <!-- MAIN -->
-    <div class="panel">
+        <div class="panel">
+      <!-- Wrapper für "kein Modul ausgewählt" -->
       <div id="noModuleSelected">
+        <div id="tutorialContainer" style="display:flex;flex-direction:column;gap:22px;">
+          <!-- Tenra Academy wird hier per JS gerendert -->
+        </div>
+
         <p class="muted">
           Kein Modul ausgewählt. Wähle links ein Modul oder lade eine Excel-Datei hoch.<br>
           Spalten, Formeln, Prozentangaben und Layout werden intelligent übernommen.
@@ -830,6 +1219,7 @@ table.sheet td.excel-cell {
       </div>
 
       <div id="moduleDetail" style="display:none;">
+
         <div class="main-header">
           <div>
             <h2 id="moduleTitle">Modul</h2>
@@ -902,6 +1292,7 @@ table.sheet td.excel-cell {
     const XLSX = window.XLSX;
 
     const state = {
+      
       user: null,
       session: null,
       firma_id: null,
@@ -975,6 +1366,318 @@ currentLineFilter: "",
     const matrixAbtEl = document.getElementById("matrix-abteilung");
 
 
+// ===============================
+// TENRA ACADEMY – Tutorial System
+// ===============================
+
+const tutorialTopics = {
+  basics: {
+    title: "📈 Grundlagen – So funktioniert Tenra Matrix",
+    subtitle: "Modul auswählen, arbeiten, speichern – ohne Angst vor Excel-Chaos.",
+    keywords: ["grundlagen","start","einführung","erste schritte","modul"],
+    sections: [
+      {
+        heading: "Was ist ein Modul?",
+        items: [
+          "Ein Modul = eine Tabelle für ein Thema (z. B. Schichtplan, Stillstände, Controlling).",
+          "Links in der Liste siehst du alle Module deiner Firma – gefiltert nach Abteilung.",
+          "Hauptmodule sind die „Master-Vorlagen“, Untermodule sind Kopien davon für Varianten."
+        ]
+      },
+      {
+        heading: "Wie du startest",
+        items: [
+          "Links: ❌ keine Module? → Erstelle ein leeres Modul oder importiere eine Excel-Datei.",
+          "Links: ✅ schon Module? → Klick auf ein Modul, rechts öffnet sich die Matrix.",
+          "Doppelklick auf eine Zelle = direkt bearbeiten, wie in Excel."
+        ]
+      }
+    ]
+  },
+  formulas: {
+    title: "🔢 Formeln, Prozent & Logik",
+    subtitle: "Genau wie in klassichen Tabellendateien – nur robuster und logischer bei Prozenten.",
+    keywords: ["formel","prozente","%","berechnung","summe"],
+    sections: [
+      {
+        heading: "Formeln eingeben",
+        items: [
+          "Formeln starten immer mit =, z. B. =A1+B1 oder =SUM(A1:A10).",
+          "Prozent kannst du als 25%, 0.25 oder 25 mit % in der Formel nutzen.",
+          "Beispiel: =F7/(100%+D7) → 100% wird automatisch als 1.0 interpretiert."
+        ]
+      },
+      {
+        heading: "Wichtige Funktionen",
+        items: [
+          "SUM(A1:A10) – Summe eines Bereichs.",
+          "AVERAGE(B1:B5) – Durchschnitt.",
+          "MIN(), MAX() – kleinster / größter Wert.",
+          "ROUND(D1;2) – Rundet auf 2 Nachkommastellen.",
+          "ABS(E1) – Absolutwert (Entfernt Minus)."
+        ]
+      },
+      {
+        heading: "Fehler verstehen",
+        items: [
+          "#DIV/0! – durch 0 geteilt.",
+          "#NAME? – unbekannte Funktion / Bezug.",
+          "#ERR – allgemeiner Fehler beim Auswerten der Formel."
+        ]
+      }
+    ]
+  },
+  modules: {
+    title: "📁 Module, Abteilungen & Untermodule",
+    subtitle: "So strukturierst du dein Werk statt 1000 Excel-Dateien.",
+    keywords: ["abteilung","untermodul","hauptmodul","struktur","filter"],
+    sections: [
+      {
+        heading: "Hauptmodul vs. Untermodul",
+        items: [
+          "Hauptmodul = Vorlage / Master, die du sperren kannst (Schreibschutz).",
+          "Untermodul = Kopie eines Hauptmoduls, in der du frei arbeiten kannst.",
+          "Untermodul-Erstellung: Hauptmodul anklicken → 'Untermodul erstellen'."
+        ]
+      },
+      {
+        heading: "Abteilungen zuordnen",
+        items: [
+          "Jedes Modul kann einer oder mehreren Abteilungen zugeordnet werden.",
+          "Klicke auf ⚙️ in der Modulliste → wähle, welche Abteilung auf dieses Modul Zugriff haben soll.",
+          "Oben im Dropdown 'Abteilung' kannst du filtern, was in der Liste angezeigt wird."
+        ]
+      }
+    ]
+  },
+  files: {
+    title: "💾 Import / Export & Dateien",
+    subtitle: "Wie du Excel-Dateien reinholst und wieder raus gibst.",
+    keywords: ["import","export","xlsx","csv","excel"],
+    sections: [
+      {
+        heading: "Tabellendatei importieren",
+        items: [
+          "Klicke links auf '➕ Tabellendatei / CSV importieren'.",
+          "Wähle die Datei und das gewünschte Sheet.",
+          "Gib einen Modulnamen ein – daraus wird ein Tenra-Modul.",
+          "Formeln und Prozentwerte werden automatisch konvertiert."
+        ]
+      },
+      {
+        heading: "Daten exportieren",
+        items: [
+          "Rechts oben im Modul: ⬇ XLSX oder ⬇ CSV.",
+          "Tenra schreibt die aktuellen Zellen zurück in eine Datei.",
+          "Alle Formeln bleiben als Text sichtbar (z. B. =A1+B1)."
+        ]
+      }
+    ]
+  },
+  tools: {
+    title: "🧰 Freeze, Filter, Undo/Redo & Zoom",
+    subtitle: "Die kleinen Dinge, die dich wie einen Profi wirken lassen.",
+    keywords: ["freeze","filter","undo","redo","zoom","werkzeuge"],
+    sections: [
+      {
+        heading: "Freeze & Filter",
+        items: [
+          "📌 Freeze: Fixiert Kopfzeilen / Index, damit du beim Scrollen die Struktur behältst.",
+          "⏷ Filter: Aktivieren, um später Filterlogik einzubauen (aktuell visuelle Vorbereitung)."
+        ]
+      },
+      {
+        heading: "Undo / Redo & Navigation",
+        items: [
+          "↶ Undo, ↷ Redo oder Strg+Z / Strg+Y funktionieren wie in Excel.",
+          "Pfeiltasten bewegen die Auswahl, Shift+Klick markiert einen Bereich.",
+          "Mit Maus an der Header-Kante ziehen = Spaltenbreite anpassen."
+        ]
+      },
+      {
+        heading: "Zoom & Fullscreen",
+        items: [
+          "Zoom +/– oben in der Leiste → komplette Matrix größer/kleiner.",
+          "⛶ Fullscreen: Nur die Matrix, alles andere ausgeblendet – ideal für große Monitore."
+        ]
+      }
+    ]
+  },
+  comments: {
+    title: "💬 Kommentare, Rechtsklick & Kontextmenü",
+    subtitle: "Wie du aus einer Tabelle ein Kommunikations-Board machst.",
+    keywords: ["kommentar","rechtsklick","context","hinweis"],
+    sections: [
+      {
+        heading: "Rechtsklick-Menü",
+        items: [
+          "Rechtsklick auf eine Zelle öffnet das Kontextmenü.",
+          "Funktionen: Kopieren, Einfügen, Kommentar, Inhalt löschen.",
+          "Kommentare markieren die Zelle mit einer kleinen Ecke oben rechts."
+        ]
+      },
+      {
+        heading: "Kommentare nutzen",
+        items: [
+          "Nutze Kommentare für Erklärungen, offene Punkte oder Übergabe-Hinweise.",
+          "Beim Hovern wird der Kommentar als Tooltip eingeblendet.",
+          "So bleibt die Tabelle clean, aber trotzdem verständlich."
+        ]
+      }
+    ]
+  }
+};
+
+function getTutorialContextHint() {
+  const total = state.modules?.length || 0;
+  const abtId = state.currentDeptFilter;
+
+  if (!total) {
+    return "Starte mit einem Excel-Import oder lege links ein leeres Modul an. Tenra Matrix wird dann automatisch deine erste Tabelle erzeugen.";
+  }
+
+  if (abtId && !state.modules.some(m => (m.abteilungen || []).includes(abtId))) {
+    return "Für diese Abteilung gibt es noch keine Module. Erstelle ein neues Hauptmodul oder bearbeite bestehende Module über ⚙️ und füge die Abteilung hinzu.";
+  }
+
+  if (total < 5) {
+    return "Du hast bereits erste Module angelegt. Nutze Untermodule, um Varianten zu testen, ohne deine Master-Struktur zu zerstören.";
+  }
+
+  return "Du nutzt Tenra Matrix bereits intensiv. Schau dir jetzt Freeze, Kommentare und Schreibschutz an, um deine Module wie professionelle Templates zu pflegen.";
+}
+
+function renderTutorial() {
+  
+
+  const container = document.getElementById("tutorialContainer");
+  if (!container) return;
+
+  const hint = getTutorialContextHint();
+
+  container.innerHTML = `
+    <div class="tutorial-header-text">
+      Tenra Academy – kurze, fokussierte Erklärungen für alles, was du in der Matrix tun kannst.
+    </div>
+
+    <input
+      id="tutorialSearch"
+      type="text"
+      placeholder="🔍 Was möchtest du lernen? (z. B. Prozente, Untermodul, Import, Kommentare…)"
+      oninput="tutorialSearch(this.value)"
+    />
+
+    <div id="tutorialCards" class="tutorial-cards-row">
+      ${Object.entries(tutorialTopics).map(([id, t]) => `
+        <div class="tutorial-card" data-id="${id}" onclick="openTutorial('${id}')">
+          <div class="tutorial-card-title">${t.title}</div>
+          <div class="tutorial-card-sub">${t.subtitle}</div>
+        </div>
+      `).join("")}
+    </div>
+
+    <div id="tutorialContent" class="tutorial-content">
+      <div class="tutorial-section">
+        <h3>Willkommen in Tenra Matrix</h3>
+        <p>${hint}</p>
+        <ul>
+          <li>Links Module auswählen oder erstellen.</li>
+          <li>Rechts arbeiten wie in klassischen Tabellenprogrammenllendatei – nur stabiler für deinen Shopfloor.</li>
+          <li>Nutze die Karten oben, um gezielt Themen zu vertiefen.</li>
+        </ul>
+        <div class="tutorial-chip-row">
+          <span class="tutorial-chip">❗ Kein Modul ausgewählt</span>
+          <span class="tutorial-chip">➕ Tabellendatei / CSV importieren</span>
+          <span class="tutorial-chip">📁 Hauptmodule & Untermodule</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Direkt die Grundlagen-Karte aktivieren
+  openTutorial("basics");
+}
+
+function openTutorial(id) {
+  const topic = tutorialTopics[id];
+  if (!topic) return;
+
+  const contentEl = document.getElementById("tutorialContent");
+  if (!contentEl) return;
+
+  // aktive Karte markieren
+  const cardsRow = document.getElementById("tutorialCards");
+  if (cardsRow) {
+    cardsRow.querySelectorAll(".tutorial-card").forEach(card => {
+      const isActive = card.dataset.id === id;
+      card.classList.toggle("active", isActive);
+    });
+  }
+
+  let html = `
+    <div class="tutorial-section">
+      <h3>${topic.title}</h3>
+      <p>${topic.subtitle}</p>
+    </div>
+  `;
+
+  (topic.sections || []).forEach(sec => {
+    html += `
+      <div class="tutorial-section">
+        <h3>${sec.heading}</h3>
+        <ul>
+          ${sec.items.map(li => `<li>${li}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  });
+
+  contentEl.innerHTML = html;
+}
+
+function tutorialSearch(query) {
+  const q = (query || "").trim().toLowerCase();
+  const cardsRow = document.getElementById("tutorialCards");
+  if (!cardsRow) return;
+
+  const cards = Array.from(cardsRow.querySelectorAll(".tutorial-card"));
+
+  // Karten visuell filtern
+  cards.forEach(card => {
+    if (!q) {
+      card.style.opacity = "1";
+      card.style.pointerEvents = "auto";
+      return;
+    }
+    const text = card.textContent.toLowerCase();
+    const match = text.includes(q);
+    card.style.opacity = match ? "1" : "0.25";
+    card.style.pointerEvents = match ? "auto" : "none";
+  });
+
+  if (!q) return;
+
+  // passende Topic-ID suchen
+  let bestId = null;
+  for (const [id, topic] of Object.entries(tutorialTopics)) {
+    const title = topic.title.toLowerCase();
+    const sub = (topic.subtitle || "").toLowerCase();
+    const kw = (topic.keywords || []).join(" ").toLowerCase();
+
+    if (title.includes(q) || sub.includes(q) || kw.includes(q)) {
+      bestId = id;
+      break;
+    }
+  }
+
+  if (bestId) {
+    openTutorial(bestId);
+  }
+}
+
+// Weil wir type="module" nutzen, müssen wir es ans window hängen
+window.openTutorial = openTutorial;
+window.tutorialSearch = tutorialSearch;
 
     function gridKey(row, colLabel, sheetName = state.sheetName) {
       return `${sheetName}:${row}:${colLabel}`;
@@ -1126,18 +1829,26 @@ currentLineFilter: "",
 
     function renderModuleList() {
   const modules = state.modules || [];
+// Suchfilter
+const searchQ = (state.searchQuery || "").toLowerCase();
+const filteredModules = modules.filter(m =>
+  m.name.toLowerCase().includes(searchQ)
+);
 
   // Falls noch nichts geladen
-  if (!modules.length) {
+  if (!filteredModules.length) {
     moduleListEl.innerHTML = "<p class='muted'>Noch keine Module vorhanden.</p>";
     moduleDetailEl.style.display = "none";
     noModuleEl.style.display = "block";
+    renderTutorial();
+
     return;
   }
 
   // ========== HAUPT- UND UNTERMODULE GRUPPIEREN ==========
-  const mains = modules.filter(m => m.is_main);
-  const subs  = modules.filter(m => !m.is_main);
+ const mains = filteredModules.filter(m => m.is_main);
+const subs  = filteredModules.filter(m => !m.is_main);
+
 
   // Kindern zuweisen
   for (const main of mains) {
@@ -1232,6 +1943,13 @@ moduleListEl.querySelectorAll(".dept-btn").forEach(btn => {
 });
 }
 
+const moduleSearchEl = document.getElementById("moduleSearch");
+
+moduleSearchEl.addEventListener("input", () => {
+  const query = moduleSearchEl.value.toLowerCase().trim();
+  state.searchQuery = query;
+  renderModuleList();
+});
 
 
     function humanFormatValue(raw, displayFormulaResult = true) {
@@ -1440,7 +2158,12 @@ selectModule(newModule.id);
   // ===== Zellen-Events =====
   newWrapper.querySelectorAll(".excel-cell").forEach(td => {
     td.addEventListener("click", (e) => handleCellClick(e, td));
-    td.addEventListener("dblclick", () => startInlineEdit(td));
+    td.addEventListener("dblclick", (e) => {
+  e.stopPropagation();
+  e.preventDefault();
+  startInlineEdit(td);
+});
+
     td.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       openCellContextMenu(e, td);
@@ -1472,15 +2195,18 @@ selectModule(newModule.id);
 
   // ========== FULLSCREEN ==========
   const fullscreenBtn = document.getElementById("fullscreenBtn");
-  fullscreenBtn.addEventListener("click", () => {
-    const elem = document.querySelector(".grid-shell");
+  fullscreenBtn.addEventListener("click", async () => {
+  const elem = document.documentElement;
 
-    if (!document.fullscreenElement) {
-      elem.requestFullscreen().catch(err => console.error(err));
-    } else {
-      document.exitFullscreen();
-    }
-  });
+  if (!document.fullscreenElement) {
+    await elem.requestFullscreen();
+    document.body.classList.add("is-fullscreen");
+  } else {
+    document.body.classList.remove("is-fullscreen");
+    await document.exitFullscreen();
+  }
+});
+
 }
 
 
@@ -1499,39 +2225,74 @@ selectModule(newModule.id);
       else formulaBarEl.value = cell.value ?? "";
     }
 
-    function handleCellClick(e, td) {
-      const row = Number(td.dataset.row);
-      const colLabel = td.dataset.col;
-      // 🔒 Popup NUR auslösen, wenn Hauptmodul & Schreibschutz aktiv
-if (state.currentModule?.is_main === true &&
-    state.currentModule?.is_locked === true) {
-  showMainLockedPopup(state.currentModule.id);
-  return;
+   function handleCellClick(e, td) {
+  // 🔒 Schreibschutz: Hauptmodul -> Popup, keine Bearbeitung
+  if (state.currentModule?.is_main === true &&
+      state.currentModule?.is_locked === true) {
+    showMainLockedPopup(state.currentModule.id);
+    return;
+  }
+
+  const row = Number(td.dataset.row);
+  const colLabel = td.dataset.col;
+  const sheetName = state.sheetName;
+
+  const wrapper = document.getElementById("gridWrapper");
+
+  if (e.shiftKey && state.selectedCell) {
+    // ==== RANGE-SELECTION (Shift + Klick) ====
+    const startRow = state.selectedCell.row;
+    const startColIndex = colLabelToIndex(state.selectedCell.colLabel);
+    const endRow = row;
+    const endColIndex = colLabelToIndex(colLabel);
+
+    state.selectionRange = {
+      startRow: Math.min(startRow, endRow),
+      endRow: Math.max(startRow, endRow),
+      startColIndex: Math.min(startColIndex, endColIndex),
+      endColIndex: Math.max(startColIndex, endColIndex),
+      sheetName
+    };
+
+    // alte Range-Klassen entfernen
+    if (wrapper) {
+      wrapper.querySelectorAll("td.excel-cell.in-range").forEach(el => {
+        el.classList.remove("in-range");
+      });
+    }
+
+    // neue Range-Klassen setzen
+    if (wrapper) {
+      for (let r = state.selectionRange.startRow; r <= state.selectionRange.endRow; r++) {
+        for (let c = state.selectionRange.startColIndex; c <= state.selectionRange.endColIndex; c++) {
+          const lbl = indexToColLabel(c);
+          const cellEl = wrapper.querySelector(
+            `td.excel-cell[data-row="${r}"][data-col="${lbl}"]`
+          );
+          if (cellEl) cellEl.classList.add("in-range");
+        }
+      }
+    }
+  } else {
+    // ==== EINZEL-SELECTION ====
+    if (wrapper) {
+      wrapper.querySelectorAll("td.excel-cell.selected").forEach(el => {
+        el.classList.remove("selected");
+      });
+      wrapper.querySelectorAll("td.excel-cell.in-range").forEach(el => {
+        el.classList.remove("in-range");
+      });
+    }
+
+    state.selectionRange = null;
+    state.selectedCell = { row, colLabel, sheetName };
+    td.classList.add("selected");
+  }
+
+  syncFormulaBar();
+  // ❌ WICHTIG: KEIN renderGrid() mehr hier – sonst flicker + dblclick kaputt
 }
 
-
-      const sheetName = state.sheetName;
-      const key = gridKey(row, colLabel, sheetName);
-
-      if (e.shiftKey && state.selectedCell) {
-        const startRow = state.selectedCell.row;
-        const startColIndex = colLabelToIndex(state.selectedCell.colLabel);
-        const endRow = row;
-        const endColIndex = colLabelToIndex(colLabel);
-        state.selectionRange = {
-          startRow: Math.min(startRow, endRow),
-          endRow: Math.max(startRow, endRow),
-          startColIndex: Math.min(startColIndex, endColIndex),
-          endColIndex: Math.max(startColIndex, endColIndex),
-          sheetName
-        };
-      } else {
-        state.selectedCell = { row, colLabel, sheetName };
-        state.selectionRange = null;
-      }
-      syncFormulaBar();
-      renderGrid();
-    }
 
     function startInlineEdit(td) {
       // 🔒 Schreibschutz → Inline-Edit verhindern
@@ -1546,8 +2307,13 @@ if (state.currentModule?.is_locked === true) {
       const cell = state.grid[key];
 
       const oldText = td.innerText.trim();
-      td.contentEditable = "true";
-      td.focus();
+     td.setAttribute("contenteditable", "true");      // Fullscreen-kompatibel
+td.style.whiteSpace = "normal";                 // Zeilenumbruch beim Tippen
+td.style.overflow = "visible";                  // Text nicht abgeschnitten
+setTimeout(() => {
+  td.focus({ preventScroll: true });
+}, 0);
+
       const sel = document.getSelection();
       if (sel) {
         const range = document.createRange();
@@ -1557,7 +2323,10 @@ if (state.currentModule?.is_locked === true) {
       }
 
       const finish = async (commit) => {
-        td.contentEditable = "false";
+       td.removeAttribute("contenteditable");
+td.style.whiteSpace = "";
+td.style.overflow = "";
+
         const newValue = td.innerText.trim();
         if (commit && newValue !== oldText) {
           await saveCell(row, colLabel, newValue, sheetName, true);
@@ -1567,7 +2336,10 @@ if (state.currentModule?.is_locked === true) {
         syncFormulaBar();
       };
 
-      const keydownHandler = (e) => {
+            const keydownHandler = (e) => {
+        // WICHTIG: verhindert, dass der globale keydown-Handler feuert
+        e.stopPropagation();
+
         if (e.key === "Enter") {
           e.preventDefault();
           finish(true);
@@ -1576,6 +2348,7 @@ if (state.currentModule?.is_locked === true) {
           finish(false);
         }
       };
+
       const blurHandler = () => {
         finish(true);
       };
@@ -1792,25 +2565,69 @@ async function loadMatrixAbteilungenUndLinien() {
     state.departments = abtRows || [];
 
     // Dropdown füllen
-    matrixAbtEl.innerHTML = `<option value="">– Abteilung wählen –</option>`;
-    (abtRows || []).forEach(row => {
-      const opt = document.createElement("option");
-      opt.value = row.id;
-      opt.textContent = row.name;
-      matrixAbtEl.appendChild(opt);
-    });
+    // Custom Dropdown Elemente
+const dropdown = document.getElementById("deptDropdown");
+const selectedEl = dropdown.querySelector(".dropdown-selected");
+const menuEl = document.getElementById("deptMenu");
 
-    matrixAbtEl.addEventListener("change", async (e) => {
-      const abtId = e.target.value;
-      state.currentDeptFilter = abtId;
-    
-      renderModuleList();
-    });
+// Menü füllen
+menuEl.innerHTML = "";
 
-    if (state.currentDeptFilter) {
-      matrixAbtEl.value = state.currentDeptFilter;
-     
-    }
+// Erst hinzufügen: ALLE — zeigt alle Module
+const allItem = document.createElement("div");
+allItem.className = "dropdown-item";
+allItem.textContent = "Firma";
+allItem.dataset.id = "";
+allItem.onclick = () => {
+  selectedEl.textContent = "Firma";
+  state.currentDeptFilter = "";
+  dropdown.classList.add("closing");
+setTimeout(() => {
+  dropdown.classList.remove("open");
+  dropdown.classList.remove("closing");
+}, 250);
+
+  renderModuleList();
+};
+menuEl.appendChild(allItem);
+
+// Dann normale Abteilungen
+(abtRows || []).forEach(dep => {
+
+  const item = document.createElement("div");
+  item.className = "dropdown-item";
+  item.textContent = dep.name;
+  item.dataset.id = dep.id;
+
+  item.onclick = () => {
+    selectedEl.textContent = dep.name;
+    state.currentDeptFilter = dep.id;
+    dropdown.classList.add("closing");
+setTimeout(() => {
+  dropdown.classList.remove("open");
+  dropdown.classList.remove("closing");
+}, 250);
+
+    renderModuleList();
+  };
+
+  menuEl.appendChild(item);
+});
+
+// Klick zum Öffnen
+dropdown.onclick = () => {
+  dropdown.classList.toggle("open");
+};
+
+// Wenn Filter schon gesetzt war → anzeigen
+if (!state.currentDeptFilter || state.currentDeptFilter === "") {
+  selectedEl.textContent = "Firma";
+} else {
+  const found = (abtRows || []).find(a => a.id == state.currentDeptFilter);
+  selectedEl.textContent = found ? found.name : "Firma";
+}
+
+
 
   } catch (e) {
     console.error("Fehler Matrix-Abteilungen:", e);
@@ -1954,6 +2771,7 @@ async function toggleLock(module) {
 }
 
 
+
     function showError(message) {
       errorBannerEl.textContent = message;
       errorBannerEl.style.display = "block";
@@ -1969,10 +2787,18 @@ async function toggleLock(module) {
       await supabase.from("excel_module_cells").delete().eq("module_id", id);
       await supabase.from("excel_modules").delete().eq("id", id);
       state.currentModule = null;
+      
       state.grid = {};
       moduleDetailEl.style.display = "none";
       noModuleEl.style.display = "block";
+      renderTutorial();
+
       await loadModules();
+      state.currentModule = null;
+noModuleEl.style.display = "block";
+moduleDetailEl.style.display = "none";
+renderTutorial();
+
       await loadMatrixAbteilungenUndLinien();
 
     });
@@ -2081,6 +2907,11 @@ async function toggleLock(module) {
         return;
       }
       await loadModules();
+      state.currentModule = null;
+noModuleEl.style.display = "block";
+moduleDetailEl.style.display = "none";
+renderTutorial();
+
       await selectModule(module.id);
       await loadMatrixAbteilungenUndLinien();
 
@@ -2208,10 +3039,15 @@ async function toggleLock(module) {
             }
 
             await loadModules();
+            state.currentModule = null;
+noModuleEl.style.display = "block";
+moduleDetailEl.style.display = "none";
+renderTutorial();
+
             await loadMatrixAbteilungenUndLinien();
 
             await selectModule(module_id);
-            alert("Excel importiert.");
+            alert("Tabellendatei importiert.");
           } catch (err) {
             console.error(err);
             alert("Fehler beim Import: " + err.message);
@@ -2695,6 +3531,11 @@ if (state.currentModule?.is_locked === true) {
       themeToggleBtn.classList.toggle("toggle-on", !state.darkMode);
 
       await loadModules();
+      state.currentModule = null;
+noModuleEl.style.display = "block";
+moduleDetailEl.style.display = "none";
+renderTutorial();
+
       await loadMatrixAbteilungenUndLinien();
 
     }
@@ -2750,6 +3591,33 @@ document.getElementById("deptSave").onclick = async () => {
   document.getElementById("deptPopup").style.display = "none";
   renderModuleList();
 };
+
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement) {
+    document.body.classList.remove("is-fullscreen");
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if ((e.key === "F11") || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "f")) {
+    e.preventDefault();
+    document.getElementById("fullscreenBtn").click();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (document.body.classList.contains("is-fullscreen")) {
+    // ESC soll NICHT Fullscreen beenden wenn man gerade editiert
+    const active = document.activeElement;
+    if (active && active.tagName === "TD" && active.isContentEditable) {
+      if (e.key === "Escape") {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        active.blur();   // beendet nur edit – nicht Fullscreen
+      }
+    }
+  }
+});
 
     init();
   </script>
