@@ -9,6 +9,31 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+.sel {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(148,163,184,0.4);
+  color: var(--text-dark);
+  backdrop-filter: blur(6px);
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23a0a8b2' height='20' width='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><polygon points='5,7 15,7 10,12'/></svg>");
+  background-repeat: no-repeat;
+  background-position: calc(100% - 10px) center;
+}
+.sel:hover {
+  border-color: var(--accent);
+}
+html[data-theme="light"] .sel {
+  background: rgba(255,255,255,0.9);
+  color: var(--text-light);
+}
+
+
     :root {
       --bg-dark: #05070b;
       --panel-dark: rgba(255,255,255,0.03);
@@ -451,6 +476,16 @@
       text-overflow: ellipsis;
       position: relative;
     }
+    /* MAXIMALE ZELLBREITE (ca. 5cm) */
+table.sheet td.excel-cell {
+  max-width: 100px;       /* ~5 cm */
+  width: 100;           /* erzwingt Konsistenz */
+  min-width: 30px;        /* Standardbreite */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
     html[data-theme="dark"] table.sheet th,
     html[data-theme="dark"] table.sheet td {
       border-color: var(--cell-border);
@@ -712,6 +747,23 @@
       background: rgba(255,255,255,0.96);
       color: var(--muted-light);
     }
+    .module-item.locked {
+  border-left: 3px solid var(--gold);
+}
+
+
+.dept-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-dark);
+  font-size: 14px;
+}
+.dept-btn:hover {
+  color: var(--accent);
+}
+
   </style>
 </head>
 <body>
@@ -734,6 +786,15 @@
         <button id="newEmptyModuleBtn" class="ghost small" type="button">+ Leeres Modul</button>
         <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
+      <div class="info-line"><strong>Abteilung</strong></div>
+<select id="matrix-abteilung" class="sel">
+  <option value="">– Lade Abteilungen –</option>
+</select>
+
+
+
+<div class="sep"></div>
+
       <div class="info-line"><strong>Module dieser Firma</strong></div>
       <div id="moduleList" class="module-list">Lade Module…</div>
     </div>
@@ -790,6 +851,13 @@
           <button id="redoBtn" class="small ghost icon" type="button">↷ Redo</button>
           <button id="freezeToggleBtn" class="small ghost icon" type="button">📌 Freeze</button>
           <button id="filterToggleBtn" class="small ghost icon" type="button">⏷ Filter</button>
+          <button id="lockToggleBtn" class="small ghost icon" type="button" style="display:none;">
+  🔒 Schreibschutz
+</button>
+
+          <button id="create-under-btn" class="small" style="display:none;margin-left:auto;">
+  Untermodul erstellen
+</button>
           <span class="hint">Tipp: Formeln beginnen mit <code>=</code> – Prozentwerte als <code>25%</code>, <code>0.25</code> oder <code>25</code> in Kombination mit <code>%</code>.</span>
         </div>
 
@@ -841,6 +909,11 @@
 
       modules: [],
       currentModule: null,
+      currentFile: null,
+
+      currentDeptFilter: "",
+currentLineFilter: "",
+
 
       sheetName: "Sheet1",
       sheets: ["Sheet1"],
@@ -898,6 +971,10 @@
     const replaceOneBtn  = document.getElementById("replaceOneBtn");
     const replaceAllBtn  = document.getElementById("replaceAllBtn");
     const searchStatusEl = document.getElementById("searchStatus");
+
+    const matrixAbtEl = document.getElementById("matrix-abteilung");
+
+
 
     function gridKey(row, colLabel, sheetName = state.sheetName) {
       return `${sheetName}:${row}:${colLabel}`;
@@ -1048,35 +1125,114 @@
     }
 
     function renderModuleList() {
-      const modules = state.modules || [];
-      if (!modules.length) {
-        moduleListEl.innerHTML = "<p class='muted'>Noch keine Module vorhanden.</p>";
-        moduleDetailEl.style.display = "none";
-        noModuleEl.style.display = "block";
-        return;
-      }
+  const modules = state.modules || [];
 
-      moduleListEl.innerHTML = modules.map(m => {
-        const active = state.currentModule && state.currentModule.id === m.id;
-        const createdAt = m.created_at
-          ? new Date(m.created_at).toLocaleString()
-          : "";
-        return `
-          <div class="module-item ${active ? "active" : ""}" data-id="${m.id}">
-            <span class="name">${m.name}</span>
-            <span class="meta">${m.excel_filename || "ohne Datei"}</span>
-            <span class="meta">${createdAt}</span>
-            <span class="badge">Excel-Modul</span>
-          </div>
-        `;
-      }).join("");
+  // Falls noch nichts geladen
+  if (!modules.length) {
+    moduleListEl.innerHTML = "<p class='muted'>Noch keine Module vorhanden.</p>";
+    moduleDetailEl.style.display = "none";
+    noModuleEl.style.display = "block";
+    return;
+  }
 
-      moduleListEl.querySelectorAll(".module-item").forEach(el => {
-        el.addEventListener("click", () => {
-          selectModule(el.dataset.id);
-        });
-      });
-    }
+  // ========== HAUPT- UND UNTERMODULE GRUPPIEREN ==========
+  const mains = modules.filter(m => m.is_main);
+  const subs  = modules.filter(m => !m.is_main);
+
+  // Kindern zuweisen
+  for (const main of mains) {
+    main.children = subs.filter(s => s.parent_id === main.id);
+  }
+// ===== DEPARTMENTS & LINES FILTER =====
+const filterAbt = state.currentDeptFilter;
+const filterLine = state.currentLineFilter;
+
+function matchesFilters(mod) {
+  // Modul hat Abteilungen: (mod.abteilungen = Array)
+  const abtMatch = !filterAbt || (mod.abteilungen || []).includes(filterAbt);
+
+  // Linienfilter (optional, später für Untermodule)
+return abtMatch;
+
+}
+
+  // ========== HTML RENDERN ==========
+  moduleListEl.innerHTML = mains.map(main => {
+    const activeMain = state.currentModule?.id === main.id;
+    const createdAtMain = main.created_at
+      ? new Date(main.created_at).toLocaleString()
+      : "";
+
+    // Hauptmodul
+    const isLocked = main.is_main; // Hauptmodule sind gesperrt
+const fadedMain = !matchesFilters(main);
+
+let block = `
+  <div class="module-item ${isLocked ? "locked" : ""} ${activeMain ? "active" : ""} ${fadedMain ? "faded" : ""}"
+       data-id="${main.id}"
+       data-type="main"
+       ${fadedMain ? 'style="opacity:0.45;pointer-events:none;"' : ""}>
+       
+       <div style="display:flex;align-items:center;gap:8px;">
+  <span class="name">📁 ${main.name}</span>
+  <button class="dept-btn" data-id="${main.id}" title="Abteilungen setzen">⚙️</button>
+</div>
+
+
+
+        <span class="meta">${main.excel_filename || "ohne Datei"}</span>
+        <span class="meta">${createdAtMain}</span>
+        <span class="badge">Hauptmodul</span>
+      </div>
+    `;
+
+    // Untermodule
+    const subBlocks = main.children.map(sub => {
+      const activeSub = state.currentModule?.id === sub.id;
+      const createdAtSub = sub.created_at
+        ? new Date(sub.created_at).toLocaleString()
+        : "";
+
+      const fadedSub = !matchesFilters(sub);
+
+return `
+  <div class="module-item sub ${activeSub ? "active" : ""} ${fadedSub ? "faded" : ""}"
+       data-id="${sub.id}"
+       data-type="sub"
+       style="margin-left:14px; ${fadedSub ? "opacity:0.45;pointer-events:none;" : ""}">
+       
+        <span class="name">↳ ${sub.name}</span>
+        <span class="meta">${sub.excel_filename || "ohne Datei"}</span>
+        <span class="meta">${createdAtSub}</span>
+  </div>
+`;
+
+    }).join("");
+
+    return block + subBlocks;
+  }).join("");
+
+  // ========== CLICK HANDLER ==========
+  moduleListEl.querySelectorAll(".module-item").forEach(el => {
+    el.addEventListener("click", () => {
+      const type = el.dataset.type;
+
+      // Hauptmodul gesperrt?
+     
+
+      selectModule(el.dataset.id);
+    });
+  });
+  // Extra: Abteilungs-Button (⚙️)
+moduleListEl.querySelectorAll(".dept-btn").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation(); // verhindert selectModule()
+    openDeptPopup(btn.dataset.id);
+  });
+});
+}
+
+
 
     function humanFormatValue(raw, displayFormulaResult = true) {
       if (raw === null || raw === undefined) return "";
@@ -1100,6 +1256,37 @@
       }
       return [];
     }
+
+   function showMainLockedPopup(mainId) {
+  const popup = document.getElementById("popup-under");
+  popup.style.display = "flex";
+
+  // Buttons
+  document.getElementById("popup-no").onclick = () => {
+    popup.style.display = "none";
+  };
+
+  document.getElementById("popup-yes").onclick = async () => {
+    const name = document.getElementById("under-name").value.trim();
+    if (!name) {
+      alert("Bitte Namen eingeben.");
+      return;
+    }
+
+    await createUntermodul(mainId, name);
+
+    document.getElementById("under-name").value = "";
+    popup.style.display = "none";
+
+    await loadModules();
+    renderModuleList();
+
+    // direkt das neue Modul auswählen
+selectModule(newModule.id);
+  };
+}
+
+
 
     function renderGrid() {
   if (!state.currentModule) return;
@@ -1315,6 +1502,14 @@
     function handleCellClick(e, td) {
       const row = Number(td.dataset.row);
       const colLabel = td.dataset.col;
+      // 🔒 Popup NUR auslösen, wenn Hauptmodul & Schreibschutz aktiv
+if (state.currentModule?.is_main === true &&
+    state.currentModule?.is_locked === true) {
+  showMainLockedPopup(state.currentModule.id);
+  return;
+}
+
+
       const sheetName = state.sheetName;
       const key = gridKey(row, colLabel, sheetName);
 
@@ -1339,6 +1534,11 @@
     }
 
     function startInlineEdit(td) {
+      // 🔒 Schreibschutz → Inline-Edit verhindern
+if (state.currentModule?.is_locked === true) {
+  return; // keine Bearbeitung
+}
+
       const row = Number(td.dataset.row);
       const colLabel = td.dataset.col;
       const sheetName = state.sheetName;
@@ -1388,6 +1588,12 @@
     }
 
     async function saveCell(row, colLabel, input, sheetName = state.sheetName, trackHistory = true) {
+      // 🔒 Schreibschutz → Speichern blocken
+if (state.currentModule?.is_locked === true) {
+  console.warn("Schreibschutz aktiv → speichern blockiert");
+  return;
+}
+
       if (!state.currentModule) return;
 
       const colIndex = colLabelToIndex(colLabel);
@@ -1465,10 +1671,12 @@
 
     async function loadModules() {
       const { data, error } = await supabase
-        .from("excel_modules")
-        .select("*")
-        .eq("firma_id", state.firma_id)
-        .order("created_at", { ascending: false });
+  .from("excel_modules")
+  .select("id, firma_id, name, excel_filename, excel_sheet_name, created_by, created_at, is_main, is_locked, parent_id, abteilungen")
+
+  .eq("firma_id", state.firma_id)
+  .order("created_at", { ascending: false });
+
 
       if (error) {
         showError("Fehler beim Laden der Module.");
@@ -1478,27 +1686,186 @@
       state.modules = data || [];
       renderModuleList();
     }
+    async function createUntermodul(mainId, name) {
+  // 1. Hauptmodul-Daten abrufen
+  const { data: mainRows, error: mainErr } = await supabase
+    .from("excel_modules")
+    .select("*")
+    .eq("id", mainId)
+    .limit(1);
+
+  if (mainErr || !mainRows?.length) {
+    console.error("Fehler Hauptmodul laden:", mainErr);
+    alert("Fehler beim Laden des Hauptmoduls.");
+    return;
+  }
+
+  const main = mainRows[0];
+
+  // 2. Excel-Daten (Zellen, Formeln etc.) aus der Tabelle excel_cells abrufen
+  const { data: cellRows, error: cellErr } = await supabase
+    .from("excel_module_cells")
+
+    .select("*")
+    .eq("module_id", mainId);
+
+  if (cellErr) {
+    console.error("Fehler Zellen laden:", cellErr);
+    alert("Fehler beim Kopieren der Zellen.");
+    return;
+  }
+
+  // 3. Untermodul erstellen (ohne Zellen, die kommen gleich)
+  const { data: newModRows, error: newErr } = await supabase
+    .from("excel_modules")
+    .insert({
+      firma_id: state.firma_id,
+      name: name,
+      excel_filename: main.excel_filename,
+      excel_sheet_name: main.excel_sheet_name,
+      is_main: false,
+      parent_id: mainId,
+      abteilungen: main.abteilungen || [],
+      max_row: main.max_row,
+      max_col: main.max_col,
+      created_by: state.user.id
+    })
+    .select()
+    .limit(1);
+
+  if (newErr) {
+    console.error("Fehler Untermodul erstellen:", newErr);
+    alert("Fehler beim Erstellen des Untermoduls.");
+    return;
+  }
+
+  const newModule = newModRows[0];
+
+  // 4. Zellen kopieren (1:1)
+  if (cellRows?.length > 0) {
+   const cloned = cellRows.map(cell => ({
+  module_id: newModule.id,
+
+  row_index: cell.row_index,
+  col_index: cell.col_index,
+  col_label: cell.col_label,
+
+  value: cell.value ?? null,
+  formula: cell.formula ?? null,
+  cell_type: cell.cell_type ?? null,
+
+  created_by: state.user.id ?? null
+}));
+
+
+    const { error: cellInsertErr } = await supabase
+      .from("excel_module_cells")
+
+      .insert(cloned);
+
+    if (cellInsertErr) {
+      console.error("Fehler beim Kopieren der Zellen:", cellInsertErr);
+      alert("Fehler beim Kopieren der Tabelleninhalte.");
+      return;
+    }
+  }
+
+  console.log("Untermodul erstellt:", newModule.id);
+}
+
+
+
+async function loadMatrixAbteilungenUndLinien() {
+  try {
+    const fid = state.firma_id;
+
+    // 🟢 Abteilungen laden
+    const { data: abtRows, error: err1 } = await supabase
+      .from("abteilungen")
+      .select("id, name")
+      .eq("firma_id", fid)
+      .order("name", { ascending: true });
+
+    if (err1) throw err1;
+
+    // 🟢 WICHTIG: im State speichern → Popup braucht das
+    state.departments = abtRows || [];
+
+    // Dropdown füllen
+    matrixAbtEl.innerHTML = `<option value="">– Abteilung wählen –</option>`;
+    (abtRows || []).forEach(row => {
+      const opt = document.createElement("option");
+      opt.value = row.id;
+      opt.textContent = row.name;
+      matrixAbtEl.appendChild(opt);
+    });
+
+    matrixAbtEl.addEventListener("change", async (e) => {
+      const abtId = e.target.value;
+      state.currentDeptFilter = abtId;
+    
+      renderModuleList();
+    });
+
+    if (state.currentDeptFilter) {
+      matrixAbtEl.value = state.currentDeptFilter;
+     
+    }
+
+  } catch (e) {
+    console.error("Fehler Matrix-Abteilungen:", e);
+  }
+}
+
+
+
+
 
     async function selectModule(id) {
-      const module = state.modules.find(m => m.id === id);
-      if (!module) return;
+  const module = state.modules.find(m => m.id === id);
+  if (!module) return;
 
-      state.currentModule = module;
-      state.selectedCell = null;
-      state.selectionRange = null;
-      formulaBarEl.value = "";
-      state.undoStack = [];
-      state.redoStack = [];
-      state.sheetName = "Sheet1";
-      state.sheets = ["Sheet1"];
-      state.comments = {};
-      state.filters = {};
-      state.filterEnabled = false;
+  state.currentModule = module;
+
+ 
+  // ================================================
+
+  state.selectedCell = null;
+  state.selectionRange = null;
+  formulaBarEl.value = "";
+  state.undoStack = [];
+  state.redoStack = [];
+  state.sheetName = "Sheet1";
+  state.sheets = ["Sheet1"];
+  state.comments = {};
+  state.filters = {};
+  state.filterEnabled = false;
+
 
       filterToggleBtn.classList.toggle("toggle-on", state.filterEnabled);
       freezeToggleBtn.classList.toggle("toggle-on", state.freezeFirstRowCol);
 
       renderModuleList();
+// === Untermodul-Button & Schreibschutz-Steuerung ===
+const btn = document.getElementById("create-under-btn");
+const lockBtn = document.getElementById("lockToggleBtn");
+
+if (module.is_main) {
+  // Untermodul
+  btn.style.display = "inline-flex";
+  btn.onclick = () => showMainLockedPopup(module.id);
+
+  // Schreibschutz
+  lockBtn.style.display = "inline-flex";
+  lockBtn.textContent = module.is_locked
+    ? "🔓 Schreibschutz aufheben"
+    : "🔒 Schreibschutz aktivieren";
+  lockBtn.onclick = () => toggleLock(module);
+
+} else {
+  btn.style.display = "none";
+  lockBtn.style.display = "none";
+}
 
       moduleDetailEl.style.display = "block";
       noModuleEl.style.display = "none";
@@ -1554,6 +1921,38 @@
       hideError();
       renderGrid();
     }
+async function toggleLock(module) {
+  if (!module) return;
+
+  const newValue = !module.is_locked;
+
+  // In DB speichern
+  const { error } = await supabase
+    .from("excel_modules")
+    .update({ is_locked: newValue })
+    .eq("id", module.id);
+
+  if (error) {
+    alert("Fehler beim Umschalten des Schreibschutzes.");
+    return;
+  }
+
+  // Lokal aktualisieren
+  module.is_locked = newValue;
+
+  // UI-Text anpassen
+  const lockBtn = document.getElementById("lockToggleBtn");
+  lockBtn.textContent = newValue
+    ? "🔓 Schreibschutz aufheben"
+    : "🔒 Schreibschutz aktivieren";
+
+  // Liste neu rendern (damit gesperrt angezeigt wird)
+  renderModuleList();
+
+  // Grid neu rendern (damit Sperre wirkt)
+  renderGrid();
+}
+
 
     function showError(message) {
       errorBannerEl.textContent = message;
@@ -1574,6 +1973,8 @@
       moduleDetailEl.style.display = "none";
       noModuleEl.style.display = "block";
       await loadModules();
+      await loadMatrixAbteilungenUndLinien();
+
     });
 
     addRowBtn.addEventListener("click", () => {
@@ -1662,13 +2063,17 @@
       if (!name) return;
       const { data: module, error } = await supabase
         .from("excel_modules")
-        .insert({
-          firma_id: state.firma_id,
-          name,
-          excel_filename: null,
-          excel_sheet_name: "Sheet1",
-          created_by: state.user.id
-        })
+.insert({
+  firma_id: state.firma_id,
+  name,
+  excel_filename: null,
+  excel_sheet_name: "Sheet1",
+  is_main: true,
+  parent_id: null,
+  abteilungen: [],
+  created_by: state.user.id
+})
+
         .select()
         .single();
       if (error) {
@@ -1677,6 +2082,8 @@
       }
       await loadModules();
       await selectModule(module.id);
+      await loadMatrixAbteilungenUndLinien();
+
     });
 
     async function handleExcelUpload(evt) {
@@ -1801,6 +2208,8 @@
             }
 
             await loadModules();
+            await loadMatrixAbteilungenUndLinien();
+
             await selectModule(module_id);
             alert("Excel importiert.");
           } catch (err) {
@@ -1914,6 +2323,19 @@
     }
 
     document.addEventListener("keydown", async (e) => {
+      // 🔒 Schreibschutz blockiert Tastatur-Änderungen
+if (state.currentModule?.is_locked === true) {
+  if (document.getElementById("deptPopup").style.display === "flex") return;
+  if (document.getElementById("popup-under").style.display === "flex") return;
+  // Navigation erlauben
+  const allowed = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab"];
+  
+  if (!allowed.includes(e.key)) {
+    e.preventDefault();
+    return; 
+  }
+}
+
       if (e.target === formulaBarEl || e.target === searchInput || e.target === replaceInput) return;
 
       const ctrl = e.ctrlKey || e.metaKey;
@@ -2273,9 +2695,118 @@
       themeToggleBtn.classList.toggle("toggle-on", !state.darkMode);
 
       await loadModules();
+      await loadMatrixAbteilungenUndLinien();
+
     }
+// ===========================
+// Abteilungen-Popup öffnen
+// ===========================
+function openDeptPopup(moduleId) {
+  state.editModuleId = moduleId;
+  
+  const mod = state.modules.find(m => m.id == moduleId);
+  const container = document.getElementById("deptList");
+  
+  const current = mod.abteilungen || [];
+  const available = state.departments || []; // kommt aus loadMatrixAbteilungenUndLinien()
+
+  container.innerHTML = available.map(dep => `
+    <label style="display:block;margin-bottom:6px;">
+      <input type="checkbox" value="${dep.id}"
+        ${current.includes(dep.id) ? "checked" : ""}>
+      ${dep.name}
+    </label>
+  `).join("");
+
+  document.getElementById("deptPopup").style.display = "flex";
+}
+
+document.getElementById("deptCancel").onclick = () => {
+  document.getElementById("deptPopup").style.display = "none";
+};
+
+// ===========================
+// Abteilungen speichern
+// ===========================
+document.getElementById("deptSave").onclick = async () => {
+  const checks = [...document.querySelectorAll("#deptList input:checked")];
+  const arr = checks.map(c => c.value);
+
+  const id = state.editModuleId;
+
+  const { error } = await supabase
+    .from("excel_modules")
+    .update({ abteilungen: arr })
+    .eq("id", id);
+
+  if (error) {
+    alert("Fehler beim Speichern der Abteilungen.");
+    return;
+  }
+
+  const mod = state.modules.find(m => m.id == id);
+  mod.abteilungen = arr;
+
+  document.getElementById("deptPopup").style.display = "none";
+  renderModuleList();
+};
 
     init();
   </script>
+  <!-- Untermodul-Popup -->
+<div id="popup-under" style="
+  position: fixed;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;">
+  
+  <div style="
+    background: #1c1f26;
+    padding: 20px;
+    border: 1px solid var(--panel-border-dark);
+    border-radius: 10px;
+    width: 320px;">
+    
+    <h3 style="margin-top:0; color:var(--accent); font-size:18px;">Untermodul erstellen?</h3>
+    <p style="margin-bottom:12px;">Dieses Modul ist ein Hauptmodul. Möchtest du ein Untermodul hinzufügen?</p>
+
+    <input id="under-name" 
+           placeholder="Name des Untermoduls" 
+           style="width:100%; margin-top:8px; padding:8px; border-radius:8px; border:1px solid var(--panel-border-dark);" />
+
+    <div style="margin-top:16px; display:flex; gap:8px; justify-content:flex-end;">
+      <button id="popup-no" class="small ghost">Abbrechen</button>
+      <button id="popup-yes" class="small" style="background:var(--accent);font-weight:600;">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Popup: Abteilungen setzen -->
+<div id="deptPopup" class="popup hidden" style="
+  position:fixed; inset:0;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.45); backdrop-filter:blur(4px); z-index:99999;
+">
+  <div style="
+    background:var(--panel-dark);
+    padding:18px; border-radius:12px;
+    width:300px; border:1px solid var(--panel-border-dark);
+  ">
+    <h3 style="margin-top:0; color:var(--accent);">Abteilungen wählen</h3>
+    <div id="deptList"></div>
+
+    <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:8px;">
+      <button id="deptCancel" class="small ghost">Abbrechen</button>
+      <button id="deptSave" class="small">Speichern</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

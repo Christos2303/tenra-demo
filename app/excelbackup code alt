@@ -1,911 +1,2281 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tenra – Excel-Module</title>
+  <title>Tenra – Matrix-Module (Next)</title>
 
-  <!-- SheetJS für Excel-Parsing (stellt window.XLSX bereit) -->
+  <!-- SheetJS für Excel-Parsing -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+    :root {
+      --bg-dark: #05070b;
+      --panel-dark: rgba(255,255,255,0.03);
+      --panel-border-dark: rgba(255,255,255,0.08);
+      --text-dark: #f5f7fb;
+      --muted-dark: #a0a8b2;
+
+      --bg-light: #f5f7fb;
+      --panel-light: #ffffff;
+      --panel-border-light: rgba(15,23,42,0.08);
+      --text-light: #0b1120;
+      --muted-light: #64748b;
+
+      --accent: #0c7b48;
+      --accent-soft: rgba(12,123,72,0.18);
+      --danger: #c0392b;
+      --danger-hover: #e74c3c;
+      --shadow-dark: 0 18px 45px rgba(0,0,0,0.55);
+      --shadow-light: 0 18px 45px rgba(15,23,42,0.11);
+
+      --cell-border: rgba(148,163,184,0.28);
+      --cell-border-light: rgba(148,163,184,0.35);
+
+      --header-bg-dark: #050816;
+      --header-bg-light: #e5e7eb;
+
+      --comment-bg: rgba(15,23,42,0.95);
+      --comment-text: #e5e7eb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html[data-theme="dark"] body {
+      background: radial-gradient(circle at top, #151b2e 0, #05070b 40%, #020308 100%);
+      color: var(--text-dark);
+    }
+    html[data-theme="light"] body {
+      background: radial-gradient(circle at top, #dbeafe 0, #f3f4f6 40%, #e5e7eb 100%);
+      color: var(--text-light);
+    }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding: 20px;
+      padding: 16px;
       margin: 0;
-      background: #0b0d10;
-      color: #f5f7fb;
+      transition: background 0.25s ease, color 0.25s ease;
     }
 
     h1 {
       font-size: 26px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     h2 {
       font-size: 20px;
-      margin-top: 20px;
-      margin-bottom: 6px;
+      margin: 0 0 6px;
     }
 
     .top-bar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 16px;
+      gap: 12px;
     }
 
     .status {
       font-size: 13px;
-      color: #a0a8b2;
     }
+    html[data-theme="dark"] .status { color: var(--muted-dark); }
+    html[data-theme="light"] .status { color: var(--muted-light); }
 
     .layout {
       display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 20px;
+      grid-template-columns: 260px 1fr;
+      gap: 16px;
       align-items: flex-start;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
       .layout {
         grid-template-columns: 1fr;
       }
     }
 
-    .sidebar,
-    .main {
-      background: rgba(255,255,255,0.03);
+    .panel {
       border-radius: 14px;
-      padding: 14px;
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(16px) saturate(130%);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      padding: 12px;
+      backdrop-filter: blur(18px) saturate(135%);
+      transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    html[data-theme="dark"] .panel {
+      background: var(--panel-dark);
+      border: 1px solid var(--panel-border-dark);
+      box-shadow: var(--shadow-dark);
+    }
+    html[data-theme="light"] .panel {
+      background: var(--panel-light);
+      border: 1px solid var(--panel-border-light);
+      box-shadow: var(--shadow-light);
     }
 
     button {
       padding: 8px 14px;
       cursor: pointer;
-      background: #0c7b48;
-      color: white;
+      background: var(--accent);
+      color: #fff;
       border: none;
       border-radius: 999px;
-      font-size: 14px;
+      font-size: 13px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
+      transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+      box-shadow: 0 8px 18px rgba(34,197,94,0.2);
+      white-space: nowrap;
     }
     button:hover {
       background: #089d57;
+      transform: translateY(-0.5px);
+      box-shadow: 0 10px 22px rgba(34,197,94,0.27);
+    }
+    button:active {
+      transform: translateY(0.5px) scale(0.99);
+      box-shadow: 0 5px 12px rgba(34,197,94,0.18);
     }
     button.small {
-      padding: 4px 8px;
+      padding: 4px 10px;
       font-size: 12px;
-      border-radius: 999px;
+      box-shadow: none;
+    }
+    button.icon {
+      padding: 6px 8px;
+      border-radius: 11px;
+      font-size: 12px;
     }
     button.danger {
-      background: #c0392b;
+      background: var(--danger);
+      box-shadow: 0 8px 18px rgba(220,38,38,0.28);
     }
     button.danger:hover {
-      background: #e74c3c;
+      background: var(--danger-hover);
+      box-shadow: 0 10px 22px rgba(220,38,38,0.32);
+    }
+    button.ghost {
+      background: transparent;
+      border: 1px solid rgba(148,163,184,0.5);
+      color: inherit;
+      box-shadow: none;
+    }
+    button.ghost:hover {
+      background: rgba(148,163,184,0.08);
+    }
+    button.toggle-on {
+      background: rgba(22,163,74,0.09);
+      color: #22c55e;
+      border: 1px solid rgba(34,197,94,0.65);
+      box-shadow: 0 8px 18px rgba(22,163,74,0.32);
     }
 
     .upload-area {
       margin-bottom: 10px;
-    }
-
-    .module-list {
-      margin-top: 8px;
-      max-height: 60vh;
-      overflow-y: auto;
-    }
-
-    .module-item {
-      padding: 8px 10px;
-      border-radius: 10px;
-      margin-bottom: 6px;
-      border: 1px solid transparent;
-      cursor: pointer;
-      font-size: 14px;
-      background: rgba(0,0,0,0.1);
-      transition: 0.15s all;
-    }
-    .module-item:hover {
-      background: rgba(255,255,255,0.04);
-    }
-    .module-item.active {
-      background: rgba(0, 122, 255, 0.15);
-      border-color: #0c7b48;
-    }
-    .module-item span.name {
-      font-weight: 600;
-      display: block;
-      color: #f5f7fb;
-    }
-    .module-item span.meta {
-      font-size: 12px;
-      color: #a0a8b2;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(12, 123, 72, 0.2);
-      color: #4ade80;
-      font-size: 11px;
-      margin-top: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
     .info-line {
       font-size: 13px;
-      color: #a0a8b2;
       margin-bottom: 6px;
+    }
+    html[data-theme="dark"] .info-line { color: var(--muted-dark); }
+    html[data-theme="light"] .info-line { color: var(--muted-light); }
+
+    .module-list {
+      margin-top: 6px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .module-item {
+      padding: 8px 10px;
+      border-radius: 11px;
+      margin-bottom: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      transition: 0.15s all;
+    }
+    html[data-theme="dark"] .module-item {
+      background: rgba(15,23,42,0.75);
+    }
+    html[data-theme="light"] .module-item {
+      background: rgba(255,255,255,0.9);
+    }
+    .module-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(15,23,42,0.25);
+    }
+    .module-item.active {
+      border-color: var(--accent);
+      box-shadow: 0 14px 34px rgba(34,197,94,0.28);
+      position: relative;
+    }
+    .module-item span.name {
+      font-weight: 600;
+      display: block;
+    }
+    html[data-theme="dark"] .module-item span.name { color: var(--text-dark); }
+    html[data-theme="light"] .module-item span.name { color: var(--text-light); }
+
+    .module-item span.meta {
+      font-size: 11px;
+    }
+    html[data-theme="dark"] .module-item span.meta { color: var(--muted-dark); }
+    html[data-theme="light"] .module-item span.meta { color: var(--muted-light); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(12,123,72,0.16);
+      color: #4ade80;
+      font-size: 10px;
+      margin-top: 4px;
     }
 
     .muted {
-      color: #a0a8b2;
       font-size: 13px;
     }
+    html[data-theme="dark"] .muted { color: var(--muted-dark); }
+    html[data-theme="light"] .muted { color: var(--muted-light); }
 
-    .search-bar {
-      margin: 10px 0;
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
     }
 
-    .search-bar input {
-      padding: 8px 10px;
-      width: 260px;
-      border: 1px solid rgba(255,255,255,0.18);
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .toolbar span.hint {
+      font-size: 11px;
+    }
+    html[data-theme="dark"] .toolbar span.hint { color: var(--muted-dark); }
+    html[data-theme="light"] .toolbar span.hint { color: var(--muted-light); }
+
+    .pill {
       border-radius: 999px;
-      font-size: 14px;
-      background: rgba(0,0,0,0.25);
-      color: #f5f7fb;
-      outline: none;
+      padding: 4px 10px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(148,163,184,0.5);
     }
-    .search-bar input::placeholder {
-      color: #6b7280;
+    html[data-theme="dark"] .pill {
+      background: rgba(15,23,42,0.85);
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] .pill {
+      background: rgba(255,255,255,0.9);
+      color: var(--muted-light);
     }
 
-    table {
+    .formula-bar-wrapper {
+      margin: 6px 0 8px;
+      position: relative;
+    }
+
+    #formulaBar {
       width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      background: rgba(0,0,0,0.2);
-      font-size: 13px;
-    }
-    table th, table td {
       padding: 8px 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      text-align: left;
-    }
-    table th {
-      background: rgba(255,255,255,0.03);
-      font-weight: 600;
-      color: #a0a8b2;
-    }
-
-    .input-row {
-      margin-top: 14px;
-      padding: 10px;
-      background: rgba(0,0,0,0.35);
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
-    .input-row input {
-      padding: 6px 8px;
-      width: 220px;
-      margin: 4px;
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 999px;
+      border-radius: 8px;
+      border: 1px solid rgba(148,163,184,0.6);
       font-size: 13px;
-      background: rgba(0,0,0,0.3);
-      color: #f5f7fb;
       outline: none;
+      background: rgba(15,23,42,0.85);
+      color: #e5e7eb;
     }
-    .input-row input::placeholder {
+    html[data-theme="light"] #formulaBar {
+      background: rgba(255,255,255,0.92);
+      color: #0f172a;
+    }
+    #formulaBar::placeholder {
       color: #6b7280;
     }
 
-    .module-header {
+    .formula-helper {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .formula-suggestions {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      margin-top: 4px;
+      border-radius: 8px;
+      overflow: hidden;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 20;
+    }
+    html[data-theme="dark"] .formula-suggestions {
+      background: rgba(15,23,42,0.98);
+      border: 1px solid rgba(148,163,184,0.6);
+      box-shadow: 0 16px 40px rgba(15,23,42,0.75);
+    }
+    html[data-theme="light"] .formula-suggestions {
+      background: #ffffff;
+      border: 1px solid rgba(148,163,184,0.5);
+      box-shadow: 0 16px 40px rgba(15,23,42,0.13);
+    }
+
+    .formula-suggestion {
+      padding: 6px 10px;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+    .formula-suggestion span.name {
+      font-weight: 600;
+    }
+    .formula-suggestion span.desc {
+      font-size: 11px;
+      opacity: 0.7;
+    }
+    .formula-suggestion:hover {
+      background: rgba(34,197,94,0.12);
+    }
+
+    .grid-shell {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(148,163,184,0.5);
+    }
+    html[data-theme="dark"] .grid-shell {
+      background: rgba(15,23,42,0.94);
+    }
+    html[data-theme="light"] .grid-shell {
+      background: rgba(255,255,255,0.98);
+    }
+
+    .grid-top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-bottom: 1px solid rgba(148,163,184,0.45);
+    }
+    html[data-theme="dark"] .grid-top-bar {
+      background: rgba(15,23,42,0.98);
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] .grid-top-bar {
+      background: rgba(241,245,249,0.95);
+      color: var(--muted-light);
+    }
+
+    .sheet-tabs {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .sheet-tab {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    html[data-theme="dark"] .sheet-tab {
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] .sheet-tab {
+      color: var(--muted-light);
+    }
+    .sheet-tab.active {
+      border-color: var(--accent);
+      background: rgba(34,197,94,0.16);
+      color: #22c55e;
+    }
+
+    .zoom-indicator {
+      font-size: 11px;
+    }
+
+    .grid-wrapper {
+      overflow: auto;
+      max-height: 60vh;
+      position: relative;
+      transform-origin: top left;
+    }
+
+    table.sheet {
+      border-collapse: collapse;
+      min-width: 780px;
+      font-size: 13px;
+      table-layout: fixed;
+    }
+
+    table.sheet th,
+    table.sheet td {
+      padding: 4px 6px;
+      border-bottom: 1px solid;
+      border-right: 1px solid;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      position: relative;
+    }
+    html[data-theme="dark"] table.sheet th,
+    html[data-theme="dark"] table.sheet td {
+      border-color: var(--cell-border);
+    }
+    html[data-theme="light"] table.sheet th,
+    html[data-theme="light"] table.sheet td {
+      border-color: var(--cell-border-light);
+    }
+
+    table.sheet th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    html[data-theme="dark"] table.sheet th {
+      background: var(--header-bg-dark);
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] table.sheet th {
+      background: var(--header-bg-light);
+      color: var(--muted-light);
+    }
+
+    table.sheet th.row-header {
+      left: 0;
+      z-index: 4;
+      text-align: right;
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      user-select: none;
+    }
+    table.sheet td.row-header {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      text-align: right;
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      font-size: 11px;
+      user-select: none;
+    }
+    html[data-theme="dark"] table.sheet td.row-header {
+      background: #020617;
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] table.sheet td.row-header {
+      background: #f3f4f6;
+      color: var(--muted-light);
+    }
+
+    td.excel-cell {
+      cursor: cell;
+      background: transparent;
+      transition: background 0.05s ease, outline 0.05s ease;
+    }
+
+    td.excel-cell.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+      background: rgba(34,197,94,0.12);
+    }
+
+    td.excel-cell.in-range {
+      background: rgba(34,197,94,0.08);
+    }
+
+    td.excel-cell:hover {
+      background: rgba(148,163,184,0.18);
+    }
+
+    td.excel-cell.negative {
+      background: rgba(239,68,68,0.08);
+      color: #fee2e2;
+    }
+    html[data-theme="light"] td.excel-cell.negative {
+      color: #b91c1c;
+    }
+
+    td.excel-cell.positive {
+      background: rgba(34,197,94,0.06);
+      color: #bbf7d0;
+    }
+    html[data-theme="light"] td.excel-cell.positive {
+      color: #166534;
+    }
+
+    td.excel-cell.zero {
+      opacity: 0.85;
+    }
+
+    td.excel-cell.error-cell {
+      background: rgba(239,68,68,0.16);
+      color: #fecaca;
+      font-weight: 600;
+    }
+    html[data-theme="light"] td.excel-cell.error-cell {
+      background: rgba(248,113,113,0.16);
+      color: #b91c1c;
+    }
+
+    .cell-comment-indicator {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-top: 7px solid #facc15;
+      border-left: 7px solid transparent;
+      z-index: 5;
+    }
+
+    .comment-tooltip {
+      position: absolute;
+      max-width: 260px;
+      padding: 6px 8px;
+      font-size: 11px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 50;
+      white-space: normal;
+    }
+    html[data-theme="dark"] .comment-tooltip {
+      background: var(--comment-bg);
+      color: var(--comment-text);
+      box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+      border: 1px solid rgba(148,163,184,0.7);
+    }
+    html[data-theme="light"] .comment-tooltip {
+      background: #111827;
+      color: #e5e7eb;
+      box-shadow: 0 18px 40px rgba(15,23,42,0.42);
+      border: 1px solid rgba(55,65,81,0.85);
+    }
+
+    .col-resize-handle {
+      position: absolute;
+      top: 0;
+      right: -3px;
+      width: 6px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 10;
+    }
+
+    .context-menu {
+      position: fixed;
+      z-index: 999;
+      min-width: 170px;
+      border-radius: 10px;
+      overflow: hidden;
+      font-size: 12px;
+    }
+    html[data-theme="dark"] .context-menu {
+      background: rgba(15,23,42,0.98);
+      color: var(--text-dark);
+      border: 1px solid rgba(148,163,184,0.7);
+      box-shadow: 0 22px 50px rgba(15,23,42,0.96);
+    }
+    html[data-theme="light"] .context-menu {
+      background: #ffffff;
+      color: var(--text-light);
+      border: 1px solid rgba(148,163,184,0.7);
+      box-shadow: 0 22px 50px rgba(15,23,42,0.24);
+    }
+
+    .context-menu-item {
+      padding: 7px 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+    .context-menu-item span.shortcut {
+      opacity: 0.7;
+      font-size: 11px;
+    }
+    .context-menu-item:hover {
+      background: rgba(34,197,94,0.16);
+    }
+
+    .search-replace-panel {
+      margin-top: 6px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    html[data-theme="dark"] .search-replace-panel {
+      background: rgba(15,23,42,0.92);
+      border: 1px solid rgba(148,163,184,0.7);
+    }
+    html[data-theme="light"] .search-replace-panel {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(148,163,184,0.7);
+    }
+    .search-replace-panel input {
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(148,163,184,0.7);
+      min-width: 160px;
+      outline: none;
+      background: transparent;
+    }
+    .search-replace-panel label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .error-banner {
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      display: none;
+    }
+    html[data-theme="dark"] .error-banner {
+      background: rgba(127,29,29,0.9);
+      color: #fee2e2;
+      border: 1px solid rgba(254,202,202,0.85);
+    }
+    html[data-theme="light"] .error-banner {
+      background: rgba(254,202,202,0.9);
+      color: #7f1d1d;
+      border: 1px solid rgba(185,28,28,0.85);
+    }
+
+    .kbd {
+      border-radius: 4px;
+      padding: 1px 4px;
+      border: 1px solid rgba(148,163,184,0.8);
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      border: 1px solid rgba(148,163,184,0.7);
+    }
+    html[data-theme="dark"] .chip {
+      background: rgba(15,23,42,0.96);
+      color: var(--muted-dark);
+    }
+    html[data-theme="light"] .chip {
+      background: rgba(255,255,255,0.96);
+      color: var(--muted-light);
     }
   </style>
 </head>
 <body>
-
   <div class="top-bar">
     <div>
-      <h1>📦 Excel-Module</h1>
+      <h1>📦 Tenra Matrix-Module</h1>
       <div class="status" id="statusUser">Lade Benutzer…</div>
     </div>
-    <div>
-      <button onclick="window.location.href='/Dashboard.html'">← Zur Übersicht</button>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button id="themeToggleBtn" class="small ghost icon" type="button">🌓 Theme</button>
+      <button onclick="window.location.href='/app/dashboard.html'" class="small" type="button">← Zur Übersicht</button>
     </div>
   </div>
 
   <div class="layout">
-    <!-- Sidebar: Module + Upload -->
-    <div class="sidebar">
+    <!-- SIDEBAR -->
+    <div class="panel">
       <div class="upload-area">
-        <button id="uploadBtn">➕ Neues Modul aus Excel</button>
+        <button id="uploadBtn" type="button">➕ Excel / CSV importieren</button>
+        <button id="newEmptyModuleBtn" class="ghost small" type="button">+ Leeres Modul</button>
         <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
-      <div class="info-line">
-        <strong>Module dieser Firma:</strong>
-      </div>
-      <div id="moduleList" class="module-list">
-        Lade Module…
-      </div>
+      <div class="info-line"><strong>Module dieser Firma</strong></div>
+      <div id="moduleList" class="module-list">Lade Module…</div>
     </div>
 
-    <!-- Main: Modul-Details + Tabelle -->
-    <div class="main">
+    <!-- MAIN -->
+    <div class="panel">
       <div id="noModuleSelected">
         <p class="muted">
           Kein Modul ausgewählt. Wähle links ein Modul oder lade eine Excel-Datei hoch.<br>
-          Die Spaltenüberschriften deiner Excel werden automatisch als Felder übernommen.
+          Spalten, Formeln, Prozentangaben und Layout werden intelligent übernommen.
         </p>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+          <div class="pill">
+            <span>Formelbeispiele:</span>
+            <code>=A1+B1</code>,
+            <code>=F7/(100%+D7)</code>,
+            <code>=A1*25%</code>,
+            <code>=G7/(1+12%)</code>,
+            <code>=SUM(A1:A10)</code>,
+            <code>=AVERAGE(B1:B5)</code>,
+            <code>=MIN()</code>,
+            <code>=MAX()</code>,
+            <code>=ROUND()</code>,
+            <code>=ABS()</code>
+          </div>
+          <div class="pill">
+            <span class="kbd">Strg</span>+<span class="kbd">C</span>,
+            <span class="kbd">V</span>,
+            <span class="kbd">Z</span>,
+            <span class="kbd">Y</span> • Doppelklick = Direktbearbeitung • Rechtsklick = Zellmenü
+          </div>
+        </div>
       </div>
 
       <div id="moduleDetail" style="display:none;">
-        <div class="module-header">
+        <div class="main-header">
           <div>
             <h2 id="moduleTitle">Modul</h2>
             <div class="info-line" id="moduleMeta"></div>
           </div>
-          <button class="danger small" id="deleteModuleBtn">Modul löschen</button>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="exportXlsxBtn" class="ghost small icon" type="button">⬇ XLSX</button>
+            <button id="exportCsvBtn" class="ghost small icon" type="button">⬇ CSV</button>
+            <button id="deleteModuleBtn" class="danger small" type="button">Modul löschen</button>
+          </div>
         </div>
 
-        <div style="margin-bottom:10px;">
-  <input id="formulaBar"
-         placeholder="Wert oder =Formel eingeben"
-         style="width:100%; padding:8px; border-radius:8px;">
-</div>
+        <div class="error-banner" id="errorBanner"></div>
 
-<div id="tableContainer">Lade Daten…</div>
+        <div class="toolbar">
+          <button id="addRowBtn" class="small ghost icon" type="button">+ Zeile</button>
+          <button id="addColBtn" class="small ghost icon" type="button">+ Spalte</button>
+          <button id="undoBtn" class="small ghost icon" type="button">↶ Undo</button>
+          <button id="redoBtn" class="small ghost icon" type="button">↷ Redo</button>
+          <button id="freezeToggleBtn" class="small ghost icon" type="button">📌 Freeze</button>
+          <button id="filterToggleBtn" class="small ghost icon" type="button">⏷ Filter</button>
+          <span class="hint">Tipp: Formeln beginnen mit <code>=</code> – Prozentwerte als <code>25%</code>, <code>0.25</code> oder <code>25</code> in Kombination mit <code>%</code>.</span>
+        </div>
 
+        <div class="formula-bar-wrapper">
+          <span class="formula-helper">fx</span>
+          <input id="formulaBar" placeholder="Wert oder =Formel eingeben (z. B. =F7/(100%+D7))">
+          <div id="formulaSuggestions" class="formula-suggestions" style="display:none;"></div>
+        </div>
+
+        <div class="search-replace-panel" id="searchPanel">
+          <label>
+            Suchen:
+            <input type="text" id="searchInput">
+          </label>
+          <label>
+            Ersetzen:
+            <input type="text" id="replaceInput">
+          </label>
+          <button id="searchNextBtn" class="small ghost icon" type="button">Suchen</button>
+          <button id="replaceOneBtn" class="small ghost icon" type="button">Ersetzen</button>
+          <button id="replaceAllBtn" class="small ghost icon" type="button">Alle ersetzen</button>
+          <span class="chip">
+            🔍 <span id="searchStatus">0 Treffer</span>
+          </span>
+        </div>
+
+        <div id="tableContainer">
+          <div class="muted">Lade Daten…</div>
+        </div>
       </div>
     </div>
   </div>
 
-<script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
-const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-window.supabase = supabase;
-
-const XLSX = window.XLSX;
-
-// ==== GLOBALER STATE ====
-const state = {
-  user: null,
-  session: null,
-  firma_id: null,
-  role: null,
-  modules: [],
-  currentModule: null,
-
-  grid: {},
-  maxRow: 0,
-  maxColIndex: 0,
-  selectedCell: null
-};
-
-// ==== DOM ====
-const statusUserEl = document.getElementById("statusUser");
-const moduleListEl = document.getElementById("moduleList");
-const moduleDetailEl = document.getElementById("moduleDetail");
-const noModuleEl = document.getElementById("noModuleSelected");
-const moduleTitleEl = document.getElementById("moduleTitle");
-const moduleMetaEl = document.getElementById("moduleMeta");
-const tableContainer = document.getElementById("tableContainer");
-const uploadBtn = document.getElementById("uploadBtn");
-const excelInput = document.getElementById("excelInput");
-const deleteModuleBtn = document.getElementById("deleteModuleBtn");
-
-
-// ===============================
-// LOGIN + FIRMA
-// ===============================
-async function init() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    alert("Bitte zuerst einloggen.");
-    window.location.href = "/login.html";
-    return;
-  }
-
-  state.session = session;
-  state.user = session.user;
-
-  statusUserEl.textContent = `Angemeldet als ${state.user.email}`;
-
-  let firmaId = localStorage.getItem("Tenra.currentFirmaId");
-
-  if (!firmaId) {
-    const { data: fu } = await supabase
-      .from("firmen_user")
-      .select("firma_id, role, status")
-      .eq("user_id", state.user.id)
-      .eq("status", "accepted")
-      .maybeSingle();
-
-    if (!fu) {
-      alert("Kein Firmenzugang gefunden.");
-      return;
-    }
-
-    firmaId = fu.firma_id;
-    state.role = fu.role;
-    localStorage.setItem("Tenra.currentFirmaId", firmaId);
-  }
-
-  state.firma_id = firmaId;
-  statusUserEl.textContent = `Angemeldet als ${state.user.email} – Rolle: ${state.role}`;
-
-  await loadModules();
-}
-
-
-// ===============================
-// MODULE LADEN
-// ===============================
-async function loadModules() {
-  const { data, error } = await supabase
-    .from("excel_modules")
-    .select("*")
-    .eq("firma_id", state.firma_id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    moduleListEl.innerHTML = "Fehler beim Laden.";
-    return;
-  }
-
-  state.modules = data || [];
-  renderModuleList();
-}
-
-function renderModuleList() {
-  if (!state.modules.length) {
-    moduleListEl.innerHTML = "<p class='muted'>Noch keine Module vorhanden.</p>";
-    moduleDetailEl.style.display = "none";
-    noModuleEl.style.display = "block";
-    return;
-  }
-
-  moduleListEl.innerHTML = state.modules
-    .map(m => {
-      const active = state.currentModule?.id === m.id;
-      const createdAt = m.created_at
-        ? new Date(m.created_at).toLocaleString()
-        : "";
-
-      return `
-        <div class="module-item ${active ? "active" : ""}" data-id="${m.id}">
-          <span class="name">${m.name}</span>
-          <span class="meta">${m.excel_filename || ""}</span>
-          <span class="meta">${createdAt}</span>
-          <span class="badge">Excel-Modul</span>
-        </div>
-      `;
-    })
-    .join("");
-
-  moduleListEl.querySelectorAll(".module-item").forEach(el => {
-    el.onclick = () => selectModule(el.dataset.id);
-  });
-}
-
-
-// ===============================
-// MODUL WÄHLEN
-// ===============================
-async function selectModule(id) {
-  state.currentModule = state.modules.find(m => m.id === id);
-
-  renderModuleList();
-  moduleDetailEl.style.display = "block";
-  noModuleEl.style.display = "none";
-
-  moduleTitleEl.textContent = state.currentModule.name;
-  moduleMetaEl.textContent =
-    state.currentModule.excel_filename
-      ? `Datei: ${state.currentModule.excel_filename}`
-      : "";
-
-  await loadGridForModule();
-  // Auto-Expand, wenn Excel groß ist
-
-
-}
-
-
-// ===============================
-// GRID LADEN
-// ===============================
-async function loadGridForModule() {
-  tableContainer.innerHTML = "Lade Daten…";
-
-  const { data, error } = await supabase
-    .from("excel_module_cells")
-    .select("*")
-    .eq("module_id", state.currentModule.id);
-
-  if (error) {
-    tableContainer.innerHTML = "Fehler beim Laden.";
-    return;
-  }
-
-  state.grid = {};
-  const rows = data.map(c => Number(c.row_index)).filter(n => Number.isFinite(n));
-const cols = data.map(c => Number(c.col_index)).filter(n => Number.isFinite(n));
-
-state.maxRow = rows.length ? Math.max(...rows) : 20;
-state.maxColIndex = cols.length ? Math.max(...cols) : 10;
-
-
-
-  (data || []).forEach(cell => {
-    const key = `${cell.row_index}:${cell.col_label}`;
-    state.grid[key] = cell;
-
-    if (cell.row_index > state.maxRow) state.maxRow = cell.row_index;
-    if (cell.col_index > state.maxColIndex) state.maxColIndex = cell.col_index;
-  });
-
-  if (state.maxRow < 20) state.maxRow = 20;
-  if (state.maxColIndex < 10) state.maxColIndex = 10;
-
-  renderGrid();
-
-
-}
-
-function indexToColLabel(idx) {
-  let n = idx + 1,
-    s = "";
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    s = String.fromCharCode(65 + rem) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s;
-}
-
-
-// ===============================
-// GRID RENDERN
-// ===============================
-function renderGrid() {
-  if (state.selectedCell) {
-  const key = `${state.selectedCell.row}:${state.selectedCell.col}`;
-  const cell = state.grid[key];
-  const formulaBar = document.getElementById("formulaBar");
-
-  if (cell?.formula) formulaBar.value = cell.formula;
-  else formulaBar.value = cell?.value ?? "";
-}
-
-  const selectedKey = state.selectedCell
-    ? `${state.selectedCell.row}:${state.selectedCell.col}`
-    : null;
-
-  let html = `
-    <div style="overflow:auto; max-height:60vh; border-radius:12px; border:1px solid rgba(255,255,255,0.1);">
-      <table style="border-collapse:collapse; min-width:700px;">
-        <thead>
-          <tr>
-            <th style="position:sticky; left:0; top:0; background:#111; z-index:5;"></th>
-  `;
-
-  for (let c = 0; c <= state.maxColIndex; c++) {
-    html += `<th style="position:sticky; top:0; background:#111; z-index:4;">${indexToColLabel(c)}</th>`;
-  }
-
-  html += "</tr></thead><tbody>";
-
-  for (let r = 1; r <= state.maxRow; r++) {
-    html += `
-      <tr>
-        <th style="position:sticky; left:0; background:#111; z-index:4;">${r}</th>
-    `;
-
-    for (let c = 0; c <= state.maxColIndex; c++) {
-      const col = indexToColLabel(c);
-      const key = `${r}:${col}`;
-      const cell = state.grid[key];
-     let value = "";
-
-if (cell?.formula) value = evaluateFormula(cell.formula);
-else value = cell?.value ?? "";
-
-
-      const selected =
-        key === selectedKey
-          ? "outline:2px solid #0c7b48; background:rgba(12,123,72,0.2);"
-          : "";
-
-      html += `
-        <td class="excel-cell" data-row="${r}" data-col="${col}" style="min-width:80px; padding:6px; ${selected}">
-          ${value}
-        </td>`;
-    }
-
-    html += "</tr>";
-  }
-
-  html += "</tbody></table></div>";
-  tableContainer.innerHTML = html;
-
-  tableContainer.querySelectorAll(".excel-cell").forEach(td => {
-
-  // Zelle auswählen
-  td.onclick = () => {
-    state.selectedCell = {
-      row: Number(td.dataset.row),
-      col: td.dataset.col
-    };
-    renderGrid();
-  };
-
-  // Doppelklick: Editiermodus
-  td.ondblclick = () => {
-    const oldValue = td.innerText.trim();
-
-    td.contentEditable = "true";
-    td.focus();
-
-    // kompletten Inhalt markieren
-    document.execCommand("selectAll", false, null);
-
-    td.onkeydown = async (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        await saveCellEdit(td.innerText.trim(), td);
-        td.contentEditable = "false";
-      }
-      if (e.key === "Escape") {
-        td.innerText = oldValue;
-        td.contentEditable = "false";
-      }
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+    const SUPABASE_URL = "https://lajqzmlhcsxhpfbhmlxe.supabase.co";
+    const SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhanF6bWxoY3N4aHBmYmhtbHhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk4MzkzMTksImV4cCI6MjA3NTQxNTMxOX0.3fjdlh2Ozf0Ku7-s2459qYFCzQBBw49tzMFM-vFgmeg";
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const XLSX = window.XLSX;
+
+    const state = {
+      user: null,
+      session: null,
+      firma_id: null,
+      role: null,
+
+      modules: [],
+      currentModule: null,
+
+      sheetName: "Sheet1",
+      sheets: ["Sheet1"],
+
+      grid: {},           // key: "row:col:sheet" → { value, formula }
+      maxRow: 40,
+      maxColIndex: 15,
+
+      selectedCell: null, // { row, colLabel, sheetName }
+      selectionRange: null, // { startRow, endRow, startColIndex, endColIndex, sheetName }
+
+      zoom: 1,
+      darkMode: true,
+      freezeFirstRowCol: true,
+      filterEnabled: false,
+      filters: {},
+
+      undoStack: [],
+      redoStack: [],
+      clipboard: null,    // { cells: [ [ {value,formula}, ... ] ], rows, cols }
+      lastSearchResults: [],
+      lastSearchIndex: -1,
+
+      comments: {},       // key: row:col:sheet → text
     };
 
-    td.onblur = async () => {
-  const newValue = td.innerText.trim();
-  if (td.contentEditable === "true" && newValue !== oldValue) {
-    await saveCellEdit(newValue, td);
-  }
-  td.contentEditable = "false";
-};
+    const statusUserEl   = document.getElementById("statusUser");
+    const moduleListEl   = document.getElementById("moduleList");
+    const noModuleEl     = document.getElementById("noModuleSelected");
+    const moduleDetailEl = document.getElementById("moduleDetail");
+    const moduleTitleEl  = document.getElementById("moduleTitle");
+    const moduleMetaEl   = document.getElementById("moduleMeta");
+    const tableContainer = document.getElementById("tableContainer");
+    const uploadBtn      = document.getElementById("uploadBtn");
+    const excelInput     = document.getElementById("excelInput");
+    const newEmptyModuleBtn = document.getElementById("newEmptyModuleBtn");
+    const deleteModuleBtn= document.getElementById("deleteModuleBtn");
+    const exportXlsxBtn  = document.getElementById("exportXlsxBtn");
+    const exportCsvBtn   = document.getElementById("exportCsvBtn");
 
-  };
+    const formulaBarEl   = document.getElementById("formulaBar");
+    const formulaSuggestionsEl = document.getElementById("formulaSuggestions");
+    const addRowBtn      = document.getElementById("addRowBtn");
+    const addColBtn      = document.getElementById("addColBtn");
+    const undoBtn        = document.getElementById("undoBtn");
+    const redoBtn        = document.getElementById("redoBtn");
+    const freezeToggleBtn= document.getElementById("freezeToggleBtn");
+    const filterToggleBtn= document.getElementById("filterToggleBtn");
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const errorBannerEl  = document.getElementById("errorBanner");
 
-});
+    const searchInput    = document.getElementById("searchInput");
+    const replaceInput   = document.getElementById("replaceInput");
+    const searchNextBtn  = document.getElementById("searchNextBtn");
+    const replaceOneBtn  = document.getElementById("replaceOneBtn");
+    const replaceAllBtn  = document.getElementById("replaceAllBtn");
+    const searchStatusEl = document.getElementById("searchStatus");
 
-}
-
-function cellValue(r, c) {
-  const key = `${r}:${c}`;
-  const cell = state.grid[key];
-  if (!cell) return 0;
-  if (cell.formula) return evaluateFormula(cell.formula);
-  return Number(cell.value) || 0;
-}
-
-function evaluateFormula(formula) {
-  if (!formula.startsWith("=")) return formula;
-
-  // Erst: Excel-Formelteil ohne "=" extrahieren
-  let expr = formula.substring(1);
-
-  // Prozentangaben 100% → 1.00
-  expr = expr.replace(/(\d+)\%/g, (_, num) => {
-    return Number(num) / 100;
-  });
-
-  // SUM(Bereich)
-  expr = expr.replace(/SUM\(([A-Z]+)([0-9]+):([A-Z]+)([0-9]+)\)/gi,
-    (_, c1, r1, c2, r2) => {
-      let sum = 0;
-
-      const startRow = Number(r1);
-      const endRow = Number(r2);
-
-      function colLabelToIndex(label) {
-        let n = 0;
-        for (let i = 0; i < label.length; i++)
-          n = n * 26 + (label.charCodeAt(i) - 64);
-        return n;
-      }
-
-      const startCol = colLabelToIndex(c1);
-      const endCol = colLabelToIndex(c2);
-
-      for (let r = startRow; r <= endRow; r++) {
-        for (let c = startCol; c <= endCol; c++) {
-          const colLabel = indexToColLabel(c - 1);
-          sum += cellValue(r, colLabel);
-        }
-      }
-
-      return sum;
+    function gridKey(row, colLabel, sheetName = state.sheetName) {
+      return `${sheetName}:${row}:${colLabel}`;
     }
-  );
 
-  // Einzel-Zellreferenzen: A1, B7 usw.
-  expr = expr.replace(/([A-Z]+)([0-9]+)/g, (_, col, row) => {
-    return cellValue(Number(row), col);
-  });
-
-  try {
-    return eval(expr);
-  } catch (e) {
-    return "#ERR";
-  }
-}
-
-
-
-async function saveCellEdit(newValue, td) {
-  const row = Number(td.dataset.row);
-  const col = td.dataset.col;
-
-  function colLabelToIndex(label) {
-    let n = 0;
-    for (let i = 0; i < label.length; i++)
-      n = n * 26 + (label.charCodeAt(i) - 64);
-    return n - 1;
-  }
-
-  // --- In DB speichern ---
-  await supabase.from("excel_module_cells").upsert(
-    {
-      module_id: state.currentModule.id,
-      row_index: row,
-      col_index: colLabelToIndex(col),
-      col_label: col,
-      value: newValue === "" || newValue === null ? null :
-       newValue.startsWith("=") ? null : newValue,
-
-formula: newValue && newValue.startsWith("=") ? newValue : null,
-
-      created_by: state.user.id
-    },
-    { onConflict: "module_id,row_index,col_index" }
-  );
-
-  // --- LOKAL aktualisieren ---
-  const key = `${row}:${col}`;
-  state.grid[key] = {
-    module_id: state.currentModule.id,
-    row_index: row,
-    col_index: colLabelToIndex(col),
-    col_label: col,
-    value: newValue === "" || newValue === null ? null :
-       newValue.startsWith("=") ? null : newValue,
-
-formula: newValue && newValue.startsWith("=") ? newValue : null,
-
-  };
-
-  // --- Nur UI neu rendern ---
-  renderGrid();
-}
-
-
-// ===============================
-// FORMELBAR SPEICHERN
-// ===============================
-document
-  .getElementById("formulaBar")
-  .addEventListener("keydown", async e => {
-    if (e.key !== "Enter") return;
-    if (!state.selectedCell) return;
-
-    const input = e.target.value.trim();
-    const { row, col } = state.selectedCell;
+    function indexToColLabel(idx) {
+      let n = idx + 1;
+      let s = "";
+      while (n > 0) {
+        const rem = (n - 1) % 26;
+        s = String.fromCharCode(65 + rem) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    }
 
     function colLabelToIndex(label) {
       let n = 0;
-      for (let i = 0; i < label.length; i++)
-        n = n * 26 + (label.charCodeAt(i) - 64);
+      const up = label.toUpperCase();
+      for (let i = 0; i < up.length; i++) {
+        n = n * 26 + (up.charCodeAt(i) - 64);
+      }
       return n - 1;
     }
 
-    await supabase.from("excel_module_cells").upsert(
-      {
-        module_id: state.currentModule.id,
-        row_index: row,
-        col_index: colLabelToIndex(col),
-        col_label: col,
-        value: input.startsWith("=") ? null : input,
-        formula: input.startsWith("=") ? input : null,
-        created_by: state.user.id
-      },
-      { onConflict: "module_id,row_index,col_index" }
-    );
+    function refToRowCol(ref) {
+      const m = /^([A-Z]+)([0-9]+)$/i.exec(ref.trim());
+      if (!m) return null;
+      return { colLabel: m[1].toUpperCase(), row: Number(m[2]) };
+    }
 
-   const key = `${row}:${col}`;
-state.grid[key] = {
-  module_id: state.currentModule.id,
-  row_index: row,
-  col_index: colLabelToIndex(col),
-  col_label: col,
-  value: input.startsWith("=") ? null : input,
-  formula: input.startsWith("=") ? input : null
-};
+    function getCellObject(row, colLabel, sheetName = state.sheetName) {
+      return state.grid[gridKey(row, colLabel, sheetName)] || null;
+    }
 
-renderGrid();
+    function getCellNumeric(row, colLabel, sheetName = state.sheetName, depth = 0) {
+      const cell = getCellObject(row, colLabel, sheetName);
+      if (!cell) return 0;
 
+      if (cell.formula) {
+        const v = evaluateFormula(cell.formula, sheetName, depth + 1);
+        const num = Number(v);
+        return Number.isFinite(num) ? num : 0;
+      }
 
-  });
+      const raw = cell.value;
+      if (raw === null || raw === undefined || raw === "") return 0;
+      const n = Number(raw);
+      if (Number.isFinite(n)) return n;
+      const percentMatch = /^(-?\d+(\.\d+)?)\s*%$/.exec(String(raw).trim());
+      if (percentMatch) {
+        return Number(percentMatch[1]) / 100;
+      }
+      return 0;
+    }
 
+    function evaluateFormula(rawFormula, sheetName = state.sheetName, depth = 0) {
+      if (!rawFormula || typeof rawFormula !== "string") return rawFormula;
+      if (!rawFormula.startsWith("=")) return rawFormula;
+      if (depth > 40) return "#CYCLE";
 
-// ===============================
-// MODUL LÖSCHEN
-// ===============================
-deleteModuleBtn.onclick = async () => {
-  if (!state.currentModule) return;
-  if (!confirm("Modul wirklich löschen?")) return;
+      let expr = rawFormula.slice(1);
 
-  await supabase
-    .from("excel_module_cells")
-    .delete()
-    .eq("module_id", state.currentModule.id);
-
-  await supabase
-    .from("excel_modules")
-    .delete()
-    .eq("id", state.currentModule.id);
-
-  state.currentModule = null;
-  await loadModules();
-};
-
-
-// ===============================
-// EXCEL-HOCHLADEN
-// ===============================
-uploadBtn.onclick = () => excelInput.click();
-excelInput.addEventListener("change", handleExcelUpload);
-
-async function handleExcelUpload(evt) {
-  const file = evt.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.readAsArrayBuffer(file);
-
-  reader.onload = async e => {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, {
-        type: "array",
-        dense: true,
-        cellFormula: true
+      expr = expr.replace(/(\d+(\.\d+)?)\s*%/g, (_, num) => {
+        return String(Number(num) / 100);
       });
 
-      const sheetNames = wb.SheetNames;
-      if (!sheetNames.length) {
-        alert("Keine Sheets gefunden.");
+      expr = expr.replace(/SUM\s*\(/gi, "__SUM(");
+      expr = expr.replace(/AVERAGE\s*\(/gi, "__AVG(");
+      expr = expr.replace(/MIN\s*\(/gi, "__MIN(");
+      expr = expr.replace(/MAX\s*\(/gi, "__MAX(");
+      expr = expr.replace(/ABS\s*\(/gi, "Math.abs(");
+      expr = expr.replace(/ROUND\s*\(/gi, "Math.round(");
+
+      expr = expr.replace(/([A-Z]+[0-9]+)\s*:\s*([A-Z]+[0-9]+)/g, (_, ref1, ref2) => {
+        return `__RANGE("${ref1.toLowerCase()}","${ref2.toLowerCase()}")`;
+      });
+
+      expr = expr.replace(/([A-Z]+)([0-9]+)/g, (match, col, row) => {
+        return `__CELL("${col.toUpperCase()}",${Number(row)})`;
+      });
+
+      expr = expr.replace(/\^/g, "**");
+
+      try {
+        const __CELL = (colLabel, row) => {
+          if (row < 1) throw new Error("#REF!");
+          const colIndex = colLabelToIndex(colLabel);
+          if (colIndex < 0 || colIndex > 16383) throw new Error("#REF!");
+          return getCellNumeric(row, colLabel, sheetName, depth + 1);
+        };
+
+        const __RANGE = (startRef, endRef) => {
+          const s = refToRowCol(String(startRef).toUpperCase());
+          const e = refToRowCol(String(endRef).toUpperCase());
+          if (!s || !e) return [];
+          const rowStart = Math.min(s.row, e.row);
+          const rowEnd   = Math.max(s.row, e.row);
+          const colStart = colLabelToIndex(s.colLabel);
+          const colEnd   = colLabelToIndex(e.colLabel);
+          const values = [];
+          for (let r = rowStart; r <= rowEnd; r++) {
+            for (let c = colStart; c <= colEnd; c++) {
+              values.push(getCellNumeric(r, indexToColLabel(c), sheetName, depth + 1));
+            }
+          }
+          return values;
+        };
+
+        const flattenArgs = (args) => {
+          const out = [];
+          for (const a of args) {
+            if (Array.isArray(a)) out.push(...flattenArgs(a));
+            else out.push(a);
+          }
+          return out;
+        };
+
+        const __SUM = (...args) => {
+          const flat = flattenArgs(args).map(Number).filter(x => Number.isFinite(x));
+          return flat.reduce((acc, v) => acc + v, 0);
+        };
+        const __AVG = (...args) => {
+          const flat = flattenArgs(args).map(Number).filter(x => Number.isFinite(x));
+          if (!flat.length) return 0;
+          return flat.reduce((a, v) => a + v, 0) / flat.length;
+        };
+        const __MIN = (...args) => {
+          const flat = flattenArgs(args).map(Number).filter(x => Number.isFinite(x));
+          return flat.length ? Math.min(...flat) : 0;
+        };
+        const __MAX = (...args) => {
+          const flat = flattenArgs(args).map(Number).filter(x => Number.isFinite(x));
+          return flat.length ? Math.max(...flat) : 0;
+        };
+
+        const result = eval(expr);
+        if (result === Infinity || result === -Infinity) return "#DIV/0!";
+        if (Number.isNaN(result)) return "#ERR";
+        return result;
+      } catch (err) {
+        if (typeof err?.message === "string" && err.message.startsWith("#")) {
+          return err.message;
+        }
+        if (err instanceof ReferenceError) return "#NAME?";
+        return "#ERR";
+      }
+    }
+
+    function renderModuleList() {
+      const modules = state.modules || [];
+      if (!modules.length) {
+        moduleListEl.innerHTML = "<p class='muted'>Noch keine Module vorhanden.</p>";
+        moduleDetailEl.style.display = "none";
+        noModuleEl.style.display = "block";
         return;
       }
 
-      let sheetName =
-        sheetNames.length === 1
-          ? sheetNames[0]
-          : prompt(
-              sheetNames
-                .map((n, i) => `${i + 1}) ${n}`)
-                .join("\n") + "\n\nSheet wählen:"
-            );
+      moduleListEl.innerHTML = modules.map(m => {
+        const active = state.currentModule && state.currentModule.id === m.id;
+        const createdAt = m.created_at
+          ? new Date(m.created_at).toLocaleString()
+          : "";
+        return `
+          <div class="module-item ${active ? "active" : ""}" data-id="${m.id}">
+            <span class="name">${m.name}</span>
+            <span class="meta">${m.excel_filename || "ohne Datei"}</span>
+            <span class="meta">${createdAt}</span>
+            <span class="badge">Excel-Modul</span>
+          </div>
+        `;
+      }).join("");
 
-      if (!sheetName) return;
-      if (Number(sheetName)) sheetName = sheetNames[Number(sheetName) - 1];
+      moduleListEl.querySelectorAll(".module-item").forEach(el => {
+        el.addEventListener("click", () => {
+          selectModule(el.dataset.id);
+        });
+      });
+    }
 
-      const sheet = wb.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(sheet, {
-        header: 1,
-        raw: false,
-        cellFormula: true
+    function humanFormatValue(raw, displayFormulaResult = true) {
+      if (raw === null || raw === undefined) return "";
+      return String(raw);
+    }
+
+    function computeConditionalClasses(evaluated) {
+      if (typeof evaluated === "string") {
+        if (evaluated.startsWith("#")) return ["error-cell"];
+        const val = Number(evaluated);
+        if (!Number.isFinite(val)) return [];
+        if (val < 0) return ["negative"];
+        if (val > 0) return ["positive"];
+        if (val === 0) return ["zero"];
+        return [];
+      }
+      if (typeof evaluated === "number") {
+        if (evaluated < 0) return ["negative"];
+        if (evaluated > 0) return ["positive"];
+        if (evaluated === 0) return ["zero"];
+      }
+      return [];
+    }
+
+    function renderGrid() {
+  if (!state.currentModule) return;
+
+  // ==== SCROLL-POSITION MERKEN (Fix gegen Hochspringen) ====
+  const oldWrapper = document.getElementById("gridWrapper");
+  const scrollTopBefore  = oldWrapper ? oldWrapper.scrollTop  : 0;
+  const scrollLeftBefore = oldWrapper ? oldWrapper.scrollLeft : 0;
+
+  const sheetName = state.sheetName;
+  const selected = state.selectedCell;
+  const selectedKey = selected
+    ? gridKey(selected.row, selected.colLabel, selected.sheetName || sheetName)
+    : null;
+
+  const range = state.selectionRange;
+  const hasRange = !!range && range.sheetName === sheetName;
+
+  const rows = [];
+  for (let r = 1; r <= state.maxRow; r++) rows.push(r);
+
+  const cols = [];
+  for (let c = 0; c <= state.maxColIndex; c++) cols.push(c);
+
+  // ==== FULLSCREEN BUTTON (NEU) ====
+  let html = `
+    <div class="grid-shell">
+      <div class="grid-top-bar">
+        <div class="sheet-tabs" id="sheetTabs">
+          ${state.sheets.map(name => `
+            <div class="sheet-tab ${name === sheetName ? "active" : ""}" data-sheet="${name}">
+              <span>${name}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button id="fullscreenBtn" class="small ghost icon" type="button">⛶</button>
+
+          <span class="zoom-indicator">Zoom: ${(state.zoom * 100).toFixed(0)}%</span>
+          <div style="display:flex;gap:4px;">
+            <button class="small ghost icon" type="button" data-zoom="out">–</button>
+            <button class="small ghost icon" type="button" data-zoom="in">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-wrapper" id="gridWrapper" style="transform:scale(${state.zoom}); transform-origin: top left;">
+        <table class="sheet">
+          <thead>
+            <tr>
+              <th class="row-header"></th>
+  `;
+
+  for (let c = 0; c < cols.length; c++) {
+    const label = indexToColLabel(cols[c]);
+    html += `
+      <th data-col="${label}">
+        <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+          <span>${label}</span>
+          <div class="col-resize-handle" data-resize="${label}"></div>
+        </div>
+      </th>
+    `;
+  }
+
+  html += `</tr></thead><tbody>`;
+
+  for (let ri = 0; ri < rows.length; ri++) {
+    const r = rows[ri];
+    html += `<tr><td class="row-header">${r}</td>`;
+
+    for (let ci = 0; ci < cols.length; ci++) {
+      const colIndex = cols[ci];
+      const colLabel = indexToColLabel(colIndex);
+      const key = gridKey(r, colLabel, sheetName);
+      const cell = state.grid[key];
+
+      let rawDisplay = "";
+      let evaluated = null;
+
+      if (cell) {
+        if (cell.formula) {
+          evaluated = evaluateFormula(cell.formula, sheetName, 0);
+          rawDisplay = evaluated;
+        } else if (cell.value !== null && cell.value !== undefined && cell.value !== "") {
+          rawDisplay = cell.value;
+          evaluated = Number(cell.value);
+        }
+      }
+
+      const isSelected = key === selectedKey;
+
+      const classList = ["excel-cell"];
+      if (isSelected) classList.push("selected");
+
+      if (hasRange) {
+        const colIdx = colLabelToIndex(colLabel);
+        if (
+          r >= range.startRow && r <= range.endRow &&
+          colIdx >= range.startColIndex && colIdx <= range.endColIndex
+        ) {
+          if (!isSelected) classList.push("in-range");
+        }
+      }
+
+      const condClasses = computeConditionalClasses(evaluated);
+      classList.push(...condClasses);
+
+      const hasComment = !!state.comments[key];
+      const display = humanFormatValue(rawDisplay);
+
+      html += `
+        <td class="${classList.join(" ")}"
+            data-row="${r}" data-col="${colLabel}" data-key="${key}">
+          ${display}
+          ${hasComment ? '<div class="cell-comment-indicator"></div>' : ""}
+        </td>
+      `;
+    }
+
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table></div></div>`;
+  tableContainer.innerHTML = html;
+
+  // ========== SCROLL-POSITION WIEDERHERSTELLEN ==========
+  const newWrapper = document.getElementById("gridWrapper");
+  if (newWrapper) {
+    newWrapper.scrollTop  = scrollTopBefore;
+    newWrapper.scrollLeft = scrollLeftBefore;
+  }
+
+  // ===== Tabs =====
+  const sheetTabsEl = document.getElementById("sheetTabs");
+  sheetTabsEl.querySelectorAll(".sheet-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const sName = tab.dataset.sheet;
+      state.sheetName = sName;
+      if (!state.selectedCell) {
+        state.selectedCell = { row: 1, colLabel: "A", sheetName: sName };
+      } else {
+        state.selectedCell.sheetName = sName;
+      }
+      syncFormulaBar();
+      renderGrid();
+    });
+  });
+
+  // ===== Zellen-Events =====
+  newWrapper.querySelectorAll(".excel-cell").forEach(td => {
+    td.addEventListener("click", (e) => handleCellClick(e, td));
+    td.addEventListener("dblclick", () => startInlineEdit(td));
+    td.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      openCellContextMenu(e, td);
+    });
+    td.addEventListener("mouseenter", (e) => {
+      const key = td.dataset.key;
+      const comment = state.comments[key];
+      if (!comment) return;
+      showCommentTooltip(e.clientX, e.clientY, comment);
+    });
+    td.addEventListener("mouseleave", hideCommentTooltip);
+  });
+
+  // ========== COLUMN RESIZE ==========
+  newWrapper.querySelectorAll(".col-resize-handle").forEach(handle => {
+    handle.addEventListener("mousedown", startColResize);
+  });
+
+  // ========== ZOOM ==========
+  const zoomButtons = tableContainer.querySelectorAll("button[data-zoom]");
+  zoomButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const dir = btn.dataset.zoom;
+      if (dir === "in") state.zoom = Math.min(2, state.zoom + 0.1);
+      else state.zoom = Math.max(0.6, state.zoom - 0.1);
+      renderGrid();
+    });
+  });
+
+  // ========== FULLSCREEN ==========
+  const fullscreenBtn = document.getElementById("fullscreenBtn");
+  fullscreenBtn.addEventListener("click", () => {
+    const elem = document.querySelector(".grid-shell");
+
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen().catch(err => console.error(err));
+    } else {
+      document.exitFullscreen();
+    }
+  });
+}
+
+
+    function syncFormulaBar() {
+      if (!state.selectedCell) {
+        formulaBarEl.value = "";
+        return;
+      }
+      const { row, colLabel, sheetName } = state.selectedCell;
+      const cell = getCellObject(row, colLabel, sheetName);
+      if (!cell) {
+        formulaBarEl.value = "";
+        return;
+      }
+      if (cell.formula) formulaBarEl.value = cell.formula;
+      else formulaBarEl.value = cell.value ?? "";
+    }
+
+    function handleCellClick(e, td) {
+      const row = Number(td.dataset.row);
+      const colLabel = td.dataset.col;
+      const sheetName = state.sheetName;
+      const key = gridKey(row, colLabel, sheetName);
+
+      if (e.shiftKey && state.selectedCell) {
+        const startRow = state.selectedCell.row;
+        const startColIndex = colLabelToIndex(state.selectedCell.colLabel);
+        const endRow = row;
+        const endColIndex = colLabelToIndex(colLabel);
+        state.selectionRange = {
+          startRow: Math.min(startRow, endRow),
+          endRow: Math.max(startRow, endRow),
+          startColIndex: Math.min(startColIndex, endColIndex),
+          endColIndex: Math.max(startColIndex, endColIndex),
+          sheetName
+        };
+      } else {
+        state.selectedCell = { row, colLabel, sheetName };
+        state.selectionRange = null;
+      }
+      syncFormulaBar();
+      renderGrid();
+    }
+
+    function startInlineEdit(td) {
+      const row = Number(td.dataset.row);
+      const colLabel = td.dataset.col;
+      const sheetName = state.sheetName;
+      const key = gridKey(row, colLabel, sheetName);
+      const cell = state.grid[key];
+
+      const oldText = td.innerText.trim();
+      td.contentEditable = "true";
+      td.focus();
+      const sel = document.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(td);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+
+      const finish = async (commit) => {
+        td.contentEditable = "false";
+        const newValue = td.innerText.trim();
+        if (commit && newValue !== oldText) {
+          await saveCell(row, colLabel, newValue, sheetName, true);
+        } else {
+          td.innerText = oldText;
+        }
+        syncFormulaBar();
+      };
+
+      const keydownHandler = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          finish(true);
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          finish(false);
+        }
+      };
+      const blurHandler = () => {
+        finish(true);
+      };
+
+      td.addEventListener("keydown", keydownHandler, { once: true });
+      td.addEventListener("blur", blurHandler, { once: true });
+
+      if (cell?.formula) formulaBarEl.value = cell.formula;
+      else formulaBarEl.value = cell?.value ?? "";
+    }
+
+    async function saveCell(row, colLabel, input, sheetName = state.sheetName, trackHistory = true) {
+      if (!state.currentModule) return;
+
+      const colIndex = colLabelToIndex(colLabel);
+      const key = gridKey(row, colLabel, sheetName);
+      const prevCell = state.grid[key] ? { ...state.grid[key] } : { value: null, formula: null };
+
+      const trimmed = (input ?? "").toString().trim();
+      const isFormula = trimmed.startsWith("=");
+
+      let value = null;
+      let formula = null;
+
+      if (isFormula) {
+        formula = trimmed;
+      } else {
+        if (trimmed === "") {
+          value = null;
+        } else if (trimmed.endsWith("%")) {
+          const num = parseFloat(trimmed);
+          if (!Number.isNaN(num)) {
+            value = String(num / 100);
+          } else {
+            value = trimmed;
+          }
+        } else {
+          value = trimmed;
+        }
+      }
+
+      const payload = {
+        module_id: state.currentModule.id,
+        row_index: row,
+        col_index: colIndex,
+        col_label: colLabel,
+        value: value,
+        formula: formula,
+        created_by: state.user.id
+      };
+
+      const { error } = await supabase
+        .from("excel_module_cells")
+        .upsert(payload, { onConflict: "module_id,row_index,col_index" });
+
+      if (error) {
+        showError("Fehler beim Speichern: " + error.message);
+        return;
+      }
+
+      state.grid[key] = {
+        module_id: state.currentModule.id,
+        row_index: row,
+        col_index: colIndex,
+        col_label: colLabel,
+        sheetName,
+        value,
+        formula
+      };
+
+      if (trackHistory) {
+        state.undoStack.push({
+          type: "cell",
+          moduleId: state.currentModule.id,
+          sheetName,
+          row,
+          colLabel,
+          before: prevCell,
+          after: { value, formula }
+        });
+        state.redoStack = [];
+      }
+
+      hideError();
+      renderGrid();
+    }
+
+    async function loadModules() {
+      const { data, error } = await supabase
+        .from("excel_modules")
+        .select("*")
+        .eq("firma_id", state.firma_id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        showError("Fehler beim Laden der Module.");
+        moduleListEl.innerHTML = "<p class='muted'>Fehler beim Laden.</p>";
+        return;
+      }
+      state.modules = data || [];
+      renderModuleList();
+    }
+
+    async function selectModule(id) {
+      const module = state.modules.find(m => m.id === id);
+      if (!module) return;
+
+      state.currentModule = module;
+      state.selectedCell = null;
+      state.selectionRange = null;
+      formulaBarEl.value = "";
+      state.undoStack = [];
+      state.redoStack = [];
+      state.sheetName = "Sheet1";
+      state.sheets = ["Sheet1"];
+      state.comments = {};
+      state.filters = {};
+      state.filterEnabled = false;
+
+      filterToggleBtn.classList.toggle("toggle-on", state.filterEnabled);
+      freezeToggleBtn.classList.toggle("toggle-on", state.freezeFirstRowCol);
+
+      renderModuleList();
+
+      moduleDetailEl.style.display = "block";
+      noModuleEl.style.display = "none";
+      moduleTitleEl.textContent = module.name;
+      moduleMetaEl.textContent =
+        module.excel_filename
+          ? `Datei: ${module.excel_filename} – Sheet: ${module.excel_sheet_name || "n/a"}`
+          : "";
+
+      await loadGridForCurrentModule();
+    }
+
+    async function loadGridForCurrentModule() {
+      if (!state.currentModule) return;
+      tableContainer.innerHTML = "<div class='muted'>Lade Daten…</div>";
+
+      const { data, error } = await supabase
+        .from("excel_module_cells")
+        .select("*")
+        .eq("module_id", state.currentModule.id);
+
+      if (error) {
+        showError("Fehler beim Laden der Zellen.");
+        tableContainer.innerHTML = "<div class='muted'>Fehler beim Laden.</div>";
+        return;
+      }
+
+      state.grid = {};
+      let maxRow = 0;
+      let maxColIndex = 0;
+
+      (data || []).forEach(cell => {
+        const row = Number(cell.row_index);
+        const colIndex = Number(cell.col_index);
+        const colLabel = cell.col_label || indexToColLabel(colIndex);
+        const sheetName = "Sheet1";
+
+        const key = gridKey(row, colLabel, sheetName);
+        state.grid[key] = {
+          ...cell,
+          row_index: row,
+          col_index: colIndex,
+          col_label: colLabel,
+          sheetName
+        };
+
+        if (row > maxRow) maxRow = row;
+        if (colIndex > maxColIndex) maxColIndex = colIndex;
       });
 
-      const moduleName = prompt("Name des Moduls:");
-      if (!moduleName) return;
+      state.maxRow = Math.max(maxRow || 0, 40);
+      state.maxColIndex = Math.max(maxColIndex || 0, 15);
+      hideError();
+      renderGrid();
+    }
 
-      const { data: module } = await supabase
+    function showError(message) {
+      errorBannerEl.textContent = message;
+      errorBannerEl.style.display = "block";
+    }
+    function hideError() {
+      errorBannerEl.style.display = "none";
+    }
+
+    deleteModuleBtn.addEventListener("click", async () => {
+      if (!state.currentModule) return;
+      if (!confirm("Modul wirklich löschen?")) return;
+      const id = state.currentModule.id;
+      await supabase.from("excel_module_cells").delete().eq("module_id", id);
+      await supabase.from("excel_modules").delete().eq("id", id);
+      state.currentModule = null;
+      state.grid = {};
+      moduleDetailEl.style.display = "none";
+      noModuleEl.style.display = "block";
+      await loadModules();
+    });
+
+    addRowBtn.addEventListener("click", () => {
+      state.maxRow += 1;
+      renderGrid();
+    });
+
+    addColBtn.addEventListener("click", () => {
+      state.maxColIndex += 1;
+      renderGrid();
+    });
+
+    async function handleFormulaBarEnter() {
+      if (!state.selectedCell || !state.currentModule) return;
+      const input = formulaBarEl.value ?? "";
+      const { row, colLabel, sheetName } = state.selectedCell;
+      await saveCell(row, colLabel, input, sheetName, true);
+    }
+
+    formulaBarEl.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        await handleFormulaBarEnter();
+      }
+    });
+
+    formulaBarEl.addEventListener("input", () => {
+      const val = formulaBarEl.value.trim();
+      if (!val.startsWith("=")) {
+        formulaSuggestionsEl.style.display = "none";
+        return;
+      }
+      const namePart = val.slice(1).split("(")[0].toUpperCase();
+      const suggestions = [
+        { name: "SUM",      desc: "Summe von Werten oder Bereichen", example: "=SUM(A1:A10)" },
+        { name: "AVERAGE",  desc: "Durchschnitt von Werten",         example: "=AVERAGE(B1:B5)" },
+        { name: "MIN",      desc: "Kleinster Wert",                  example: "=MIN(C1:C10)" },
+        { name: "MAX",      desc: "Größter Wert",                    example: "=MAX(C1:C10)" },
+        { name: "ROUND",    desc: "Rundet eine Zahl",                example: "=ROUND(D1;2)" },
+        { name: "ABS",      desc: "Absolutwert",                     example: "=ABS(E1)" }
+      ];
+      const matched = suggestions.filter(s => s.name.startsWith(namePart));
+      if (!matched.length) {
+        formulaSuggestionsEl.style.display = "none";
+        return;
+      }
+      formulaSuggestionsEl.innerHTML = matched.map(s => `
+        <div class="formula-suggestion" data-name="${s.name}" data-example="${s.example}">
+          <span class="name">${s.name}</span>
+          <span class="desc">${s.desc}</span>
+        </div>
+      `).join("");
+      formulaSuggestionsEl.style.display = "block";
+      formulaSuggestionsEl.querySelectorAll(".formula-suggestion").forEach(el => {
+        el.addEventListener("click", () => {
+          const name = el.dataset.name;
+          const example = el.dataset.example;
+          const current = formulaBarEl.value.trim();
+          if (!current || current === "=") {
+            formulaBarEl.value = example;
+          } else {
+            if (!current.includes("(")) {
+              formulaBarEl.value = "=" + name + "(";
+            } else {
+              formulaBarEl.value = "=" + name + current.slice(1 + namePart.length);
+            }
+          }
+          formulaSuggestionsEl.style.display = "none";
+          formulaBarEl.focus();
+        });
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!formulaSuggestionsEl.contains(e.target) && e.target !== formulaBarEl) {
+        formulaSuggestionsEl.style.display = "none";
+      }
+      closeContextMenu();
+    });
+
+    uploadBtn.addEventListener("click", () => excelInput.click());
+    excelInput.addEventListener("change", handleExcelUpload);
+
+    newEmptyModuleBtn.addEventListener("click", async () => {
+      const name = prompt("Name des neuen Moduls:");
+      if (!name) return;
+      const { data: module, error } = await supabase
         .from("excel_modules")
         .insert({
           firma_id: state.firma_id,
-          name: moduleName,
-          excel_filename: file.name,
-          excel_sheet_name: sheetName,
+          name,
+          excel_filename: null,
+          excel_sheet_name: "Sheet1",
           created_by: state.user.id
         })
         .select()
         .single();
-
-      const module_id = module.id;
-
-      function indexToColLabel(idx) {
-        let n = idx + 1,
-          s = "";
-        while (n > 0) {
-          const rem = (n - 1) % 26;
-          s = String.fromCharCode(65 + rem) + s;
-          n = Math.floor((n - 1) / 26);
-        }
-        return s;
+      if (error) {
+        showError("Fehler beim Anlegen des Moduls.");
+        return;
       }
+      await loadModules();
+      await selectModule(module.id);
+    });
 
-      const inserts = [];
+    async function handleExcelUpload(evt) {
+      const file = evt.target.files[0];
+      if (!file) return;
 
-      json.forEach((row, rIdx) => {
-        row.forEach((cell, cIdx) => {
-        let value = null;
-let formula = null;
+      try {
+        const reader = new FileReader();
+        reader.readAsArrayBuffer(file);
+        reader.onload = async (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, {
+              type: "array",
+              cellFormula: true
+            });
 
-if (cell !== null && cell !== undefined) {
-  if (typeof cell === "object") {
-    // SheetJS cell object
-    if (cell.f) {
-      formula = "=" + cell.f;
+            const sheetNames = wb.SheetNames;
+            if (!sheetNames.length) {
+              alert("Keine Sheets gefunden.");
+              return;
+            }
+
+            let sheetName;
+            if (sheetNames.length === 1) {
+              sheetName = sheetNames[0];
+            } else {
+              const choice = prompt(
+                sheetNames.map((n, i) => `${i+1}) ${n}`).join("\n") +
+                "\n\nSheet wählen (Nummer oder Name):"
+              );
+              if (!choice) return;
+              if (!isNaN(Number(choice))) {
+                sheetName = sheetNames[Number(choice) - 1];
+              } else {
+                sheetName = choice;
+              }
+            }
+
+            const sheet = wb.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(sheet, {
+              header: 1,
+              raw: false,
+              cellFormula: true
+            });
+
+            const moduleName = prompt("Name des Moduls:");
+            if (!moduleName) return;
+
+            const { data: module, error: modErr } = await supabase
+              .from("excel_modules")
+              .insert({
+                firma_id: state.firma_id,
+                name: moduleName,
+                excel_filename: file.name,
+                excel_sheet_name: sheetName,
+                created_by: state.user.id
+              })
+              .select()
+              .single();
+
+            if (modErr) {
+              console.error(modErr);
+              alert("Fehler beim Anlegen des Moduls.");
+              return;
+            }
+
+            const module_id = module.id;
+            const inserts = [];
+
+            json.forEach((rowArr, rIdx) => {
+              rowArr.forEach((cell, cIdx) => {
+                let value = null;
+                let formula = null;
+
+                if (cell !== null && cell !== undefined) {
+                  if (typeof cell === "object" && cell !== null) {
+                    if (cell.f) {
+                      formula = "=" + cell.f;
+                    }
+                    if (cell.v !== undefined && cell.v !== null && cell.v !== "") {
+                      let v = String(cell.v);
+                      if (typeof v === "string" && v.trim().endsWith("%")) {
+                        const num = parseFloat(v);
+                        if (!isNaN(num)) {
+                          v = String(num / 100);
+                        }
+                      }
+                      value = v;
+                    }
+                  } else if (cell !== "") {
+                    let v = String(cell);
+                    if (v.trim().endsWith("%")) {
+                      const num = parseFloat(v);
+                      if (!isNaN(num)) {
+                        v = String(num / 100);
+                      }
+                    }
+                    value = v;
+                  }
+                }
+
+                if (value !== null || formula !== null) {
+                  inserts.push({
+                    module_id,
+                    row_index: rIdx + 1,
+                    col_index: cIdx,
+                    col_label: indexToColLabel(cIdx),
+                    value,
+                    formula,
+                    created_by: state.user.id
+                  });
+                }
+              });
+            });
+
+            if (inserts.length) {
+              const { error: insErr } = await supabase
+                .from("excel_module_cells")
+                .insert(inserts);
+              if (insErr) console.error(insErr);
+            }
+
+            await loadModules();
+            await selectModule(module_id);
+            alert("Excel importiert.");
+          } catch (err) {
+            console.error(err);
+            alert("Fehler beim Import: " + err.message);
+          } finally {
+            evt.target.value = "";
+          }
+        };
+      } catch (err) {
+        console.error(err);
+        alert("Fehler beim Lesen der Datei.");
+        evt.target.value = "";
+      }
     }
-    if (cell.v !== undefined && cell.v !== null && cell.v !== "") {
-      value = String(cell.v);
-    }
-  } else {
-    // primitive
-    if (cell !== "") {
-      value = String(cell);
-    }
-  }
-}
 
-if (value !== null || formula !== null) {
-  inserts.push({
-    module_id,
-    row_index: rIdx + 1,
-    col_index: cIdx,
-    col_label: indexToColLabel(cIdx),
-    value,
-    formula,
-    created_by: state.user.id
-  });
-}
+    undoBtn.addEventListener("click", () => performUndo());
+    redoBtn.addEventListener("click", () => performRedo());
 
+    async function performUndo() {
+      const op = state.undoStack.pop();
+      if (!op) return;
+      state.redoStack.push(op);
+      if (op.type === "cell") {
+        const { row, colLabel, sheetName, before } = op;
+        await saveCell(row, colLabel, before.formula ?? before.value ?? "", sheetName, false);
+      }
+    }
+
+    async function performRedo() {
+      const op = state.redoStack.pop();
+      if (!op) return;
+      state.undoStack.push(op);
+      if (op.type === "cell") {
+        const { row, colLabel, sheetName, after } = op;
+        await saveCell(row, colLabel, after.formula ?? after.value ?? "", sheetName, false);
+      }
+    }
+
+    function showCommentTooltip(x, y, text) {
+      let tooltip = document.getElementById("commentTooltip");
+      if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.id = "commentTooltip";
+        tooltip.className = "comment-tooltip";
+        document.body.appendChild(tooltip);
+      }
+      tooltip.textContent = text;
+      tooltip.style.left = (x + 10) + "px";
+      tooltip.style.top = (y + 10) + "px";
+      tooltip.style.display = "block";
+    }
+    function hideCommentTooltip() {
+      const tooltip = document.getElementById("commentTooltip");
+      if (tooltip) tooltip.style.display = "none";
+    }
+
+    let activeContextMenu = null;
+    function openCellContextMenu(e, td) {
+      closeContextMenu();
+
+      const row = Number(td.dataset.row);
+      const colLabel = td.dataset.col;
+      const sheetName = state.sheetName;
+      const key = gridKey(row, colLabel, sheetName);
+
+      const menu = document.createElement("div");
+      menu.className = "context-menu";
+      menu.innerHTML = `
+        <div class="context-menu-item" data-action="copy">Kopieren <span class="shortcut">Strg+C</span></div>
+        <div class="context-menu-item" data-action="paste">Einfügen <span class="shortcut">Strg+V</span></div>
+        <div class="context-menu-item" data-action="comment">Kommentar…</div>
+        <div class="context-menu-item" data-action="clear">Inhalt löschen</div>
+      `;
+      document.body.appendChild(menu);
+      const rect = menu.getBoundingClientRect();
+      const x = Math.min(e.clientX, window.innerWidth - rect.width - 8);
+      const y = Math.min(e.clientY, window.innerHeight - rect.height - 8);
+      menu.style.left = x + "px";
+      menu.style.top  = y + "px";
+
+      menu.querySelectorAll(".context-menu-item").forEach(item => {
+        item.addEventListener("click", async () => {
+          const action = item.dataset.action;
+          if (action === "copy") {
+            await handleCopy();
+          } else if (action === "paste") {
+            await handlePaste();
+          } else if (action === "comment") {
+            const current = state.comments[key] || "";
+            const text = prompt("Kommentar für diese Zelle:", current);
+            if (text !== null) {
+              if (text.trim() === "") delete state.comments[key];
+              else state.comments[key] = text.trim();
+              renderGrid();
+            }
+          } else if (action === "clear") {
+            await saveCell(row, colLabel, "", sheetName, true);
+          }
+          closeContextMenu();
         });
       });
 
-      if (inserts.length) {
-        await supabase.from("excel_module_cells").insert(inserts);
+      activeContextMenu = menu;
+    }
+    function closeContextMenu() {
+      if (activeContextMenu) {
+        activeContextMenu.remove();
+        activeContextMenu = null;
+      }
+    }
+
+    document.addEventListener("keydown", async (e) => {
+      if (e.target === formulaBarEl || e.target === searchInput || e.target === replaceInput) return;
+
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        await handleCopy();
+      } else if (ctrl && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        await handlePaste();
+      } else if (ctrl && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        await performUndo();
+      } else if (ctrl && e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        await performRedo();
+      } else if (e.key === "Delete") {
+        e.preventDefault();
+        await clearSelection();
+      } else if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Tab","Enter"].includes(e.key)) {
+        e.preventDefault();
+        moveSelection(e.key, e.shiftKey);
+      }
+    });
+
+    async function handleCopy() {
+      if (!state.selectedCell && !state.selectionRange) return;
+
+      let cells = [];
+      if (state.selectionRange) {
+        const { startRow, endRow, startColIndex, endColIndex, sheetName } = state.selectionRange;
+        for (let r = startRow; r <= endRow; r++) {
+          const rowArr = [];
+          for (let c = startColIndex; c <= endColIndex; c++) {
+            const colLabel = indexToColLabel(c);
+            const cell = getCellObject(r, colLabel, sheetName);
+            rowArr.push(cell ? { value: cell.value, formula: cell.formula } : { value: null, formula: null });
+          }
+          cells.push(rowArr);
+        }
+      } else if (state.selectedCell) {
+        const { row, colLabel, sheetName } = state.selectedCell;
+        const cell = getCellObject(row, colLabel, sheetName);
+        cells = [[cell ? { value: cell.value, formula: cell.formula } : { value: null, formula: null }]];
       }
 
-      await loadModules();
-      await selectModule(module_id);
+      state.clipboard = { cells, rows: cells.length, cols: cells[0]?.length ?? 0 };
 
-      alert("Excel importiert.");
-    } catch (err) {
-      alert("Fehler: " + err.message);
-    } finally {
-      evt.target.value = "";
+      try {
+        const plain = cells.map(row => row.map(c => c.formula ?? c.value ?? "").join("\t")).join("\n");
+        await navigator.clipboard.writeText(plain);
+      } catch (_) {}
     }
-  };
-}
 
+    async function handlePaste() {
+      if (!state.clipboard || !state.selectedCell) return;
+      const { row, colLabel, sheetName } = state.selectedCell;
+      const startRow = row;
+      const startColIndex = colLabelToIndex(colLabel);
 
-// START
-init();
-</script>
+      const { cells, rows, cols } = state.clipboard;
+      for (let rOff = 0; rOff < rows; rOff++) {
+        for (let cOff = 0; cOff < cols; cOff++) {
+          const targetRow = startRow + rOff;
+          const targetColIndex = startColIndex + cOff;
+          const targetColLabel = indexToColLabel(targetColIndex);
+          const src = cells[rOff][cOff];
+          const input = src.formula ?? src.value ?? "";
+          if (input === "" || input === null) continue;
+          await saveCell(targetRow, targetColLabel, input, sheetName, true);
+        }
+      }
+    }
 
+    async function clearSelection() {
+      if (state.selectionRange) {
+        const { startRow, endRow, startColIndex, endColIndex, sheetName } = state.selectionRange;
+        for (let r = startRow; r <= endRow; r++) {
+          for (let c = startColIndex; c <= endColIndex; c++) {
+            await saveCell(r, indexToColLabel(c), "", sheetName, true);
+          }
+        }
+      } else if (state.selectedCell) {
+        const { row, colLabel, sheetName } = state.selectedCell;
+        await saveCell(row, colLabel, "", sheetName, true);
+      }
+    }
 
+    function moveSelection(key, shift) {
+      if (!state.selectedCell) {
+        state.selectedCell = { row: 1, colLabel: "A", sheetName: state.sheetName };
+        syncFormulaBar();
+        renderGrid();
+        return;
+      }
+      let { row, colLabel, sheetName } = state.selectedCell;
+      let r = row;
+      let c = colLabelToIndex(colLabel);
+
+      if (key === "ArrowUp") r = Math.max(1, r - 1);
+      else if (key === "ArrowDown") r = Math.min(state.maxRow, r + 1);
+      else if (key === "ArrowLeft") c = Math.max(0, c - 1);
+      else if (key === "ArrowRight" || key === "Tab") c = Math.min(state.maxColIndex, c + 1);
+      else if (key === "Enter") r = Math.min(state.maxRow, r + 1);
+
+      const newColLabel = indexToColLabel(c);
+      state.selectedCell = { row: r, colLabel: newColLabel, sheetName };
+      if (shift) {
+        const startRow = row;
+        const startColIndex = colLabelToIndex(colLabel);
+        state.selectionRange = {
+          startRow: Math.min(startRow, r),
+          endRow: Math.max(startRow, r),
+          startColIndex: Math.min(startColIndex, c),
+          endColIndex: Math.max(startColIndex, c),
+          sheetName
+        };
+      } else {
+        state.selectionRange = null;
+      }
+      syncFormulaBar();
+      renderGrid();
+    }
+
+    let resizing = null;
+    function startColResize(e) {
+      const label = e.target.dataset.resize;
+      const th = e.target.closest("th");
+      if (!th) return;
+      const startX = e.clientX;
+      const startWidth = th.offsetWidth;
+      resizing = { th, label, startX, startWidth };
+      document.addEventListener("mousemove", onColResizeMove);
+      document.addEventListener("mouseup", onColResizeEnd, { once: true });
+    }
+    function onColResizeMove(e) {
+      if (!resizing) return;
+      const delta = e.clientX - resizing.startX;
+      const newWidth = Math.max(40, resizing.startWidth + delta);
+      resizing.th.style.width = newWidth + "px";
+      resizing.th.style.minWidth = newWidth + "px";
+      resizing.th.style.maxWidth = newWidth + "px";
+    }
+    function onColResizeEnd() {
+      document.removeEventListener("mousemove", onColResizeMove);
+      resizing = null;
+    }
+
+    searchNextBtn.addEventListener("click", () => performSearch(false));
+    replaceOneBtn.addEventListener("click", () => performReplace(false));
+    replaceAllBtn.addEventListener("click", () => performReplace(true));
+
+    function performSearch(resetIndex) {
+      const term = searchInput.value ?? "";
+      if (!term) {
+        state.lastSearchResults = [];
+        state.lastSearchIndex = -1;
+        searchStatusEl.textContent = "0 Treffer";
+        return;
+      }
+      if (!state.lastSearchResults.length || resetIndex) {
+        const results = [];
+        const sheetName = state.sheetName;
+        for (let r = 1; r <= state.maxRow; r++) {
+          for (let cIdx = 0; cIdx <= state.maxColIndex; cIdx++) {
+            const colLabel = indexToColLabel(cIdx);
+            const cell = getCellObject(r, colLabel, sheetName);
+            const text = cell?.formula ?? cell?.value ?? "";
+            if (String(text).includes(term)) {
+              results.push({ sheetName, row: r, colLabel });
+            }
+          }
+        }
+        state.lastSearchResults = results;
+        state.lastSearchIndex = -1;
+        searchStatusEl.textContent = `${results.length} Treffer`;
+      }
+      if (!state.lastSearchResults.length) return;
+      state.lastSearchIndex = (state.lastSearchIndex + 1) % state.lastSearchResults.length;
+      const hit = state.lastSearchResults[state.lastSearchIndex];
+      state.sheetName = hit.sheetName;
+      state.selectedCell = { row: hit.row, colLabel: hit.colLabel, sheetName: hit.sheetName };
+      state.selectionRange = null;
+      syncFormulaBar();
+      renderGrid();
+    }
+
+    async function performReplace(all) {
+      const term = searchInput.value ?? "";
+      const replacement = replaceInput.value ?? "";
+      if (!term) return;
+
+      const sheetName = state.sheetName;
+      if (all) {
+        const results = [];
+        for (let r = 1; r <= state.maxRow; r++) {
+          for (let cIdx = 0; cIdx <= state.maxColIndex; cIdx++) {
+            const colLabel = indexToColLabel(cIdx);
+            const cell = getCellObject(r, colLabel, sheetName);
+            const text = cell?.formula ?? cell?.value ?? "";
+            if (String(text).includes(term)) {
+              results.push({ row: r, colLabel, sheetName, text, hasFormula: !!cell?.formula });
+            }
+          }
+        }
+        for (const hit of results) {
+          const newText = String(hit.text).split(term).join(replacement);
+          await saveCell(hit.row, hit.colLabel, newText, hit.sheetName, true);
+        }
+        searchStatusEl.textContent = `${results.length} ersetzt`;
+        state.lastSearchResults = [];
+        state.lastSearchIndex = -1;
+      } else {
+        if (!state.lastSearchResults.length) performSearch(true);
+        if (!state.lastSearchResults.length) return;
+        state.lastSearchIndex = (state.lastSearchIndex + 1) % state.lastSearchResults.length;
+        const hit = state.lastSearchResults[state.lastSearchIndex];
+        const cell = getCellObject(hit.row, hit.colLabel, hit.sheetName);
+        const text = cell?.formula ?? cell?.value ?? "";
+        const newText = String(text).replace(term, replacement);
+        await saveCell(hit.row, hit.colLabel, newText, hit.sheetName, true);
+        state.selectedCell = { row: hit.row, colLabel: hit.colLabel, sheetName: hit.sheetName };
+        syncFormulaBar();
+        renderGrid();
+      }
+    }
+
+    freezeToggleBtn.addEventListener("click", () => {
+      state.freezeFirstRowCol = !state.freezeFirstRowCol;
+      freezeToggleBtn.classList.toggle("toggle-on", state.freezeFirstRowCol);
+    });
+
+    filterToggleBtn.addEventListener("click", () => {
+      state.filterEnabled = !state.filterEnabled;
+      filterToggleBtn.classList.toggle("toggle-on", state.filterEnabled);
+    });
+
+    exportXlsxBtn.addEventListener("click", () => {
+      if (!state.currentModule) return;
+      const wsData = [];
+      const sheetName = state.sheetName;
+
+      const headerRow = [];
+      headerRow.push("");
+      for (let cIdx = 0; cIdx <= state.maxColIndex; cIdx++) {
+        headerRow.push(indexToColLabel(cIdx));
+      }
+      wsData.push(headerRow);
+
+      for (let r = 1; r <= state.maxRow; r++) {
+        const rowArr = [r];
+        for (let cIdx = 0; cIdx <= state.maxColIndex; cIdx++) {
+          const colLabel = indexToColLabel(cIdx);
+          const cell = getCellObject(r, colLabel, sheetName);
+          if (!cell) {
+            rowArr.push("");
+          } else if (cell.formula) {
+            rowArr.push(cell.formula);
+          } else {
+            rowArr.push(cell.value ?? "");
+          }
+        }
+        wsData.push(rowArr);
+      }
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, `${state.currentModule.name || "modul"}.xlsx`);
+    });
+
+    exportCsvBtn.addEventListener("click", () => {
+      if (!state.currentModule) return;
+      const sheetName = state.sheetName;
+      const lines = [];
+      for (let r = 1; r <= state.maxRow; r++) {
+        const rowArr = [];
+        for (let cIdx = 0; cIdx <= state.maxColIndex; cIdx++) {
+          const colLabel = indexToColLabel(cIdx);
+          const cell = getCellObject(r, colLabel, sheetName);
+          let val = "";
+          if (cell) {
+            val = cell.formula ?? cell.value ?? "";
+          }
+          const safe = `"${String(val).replace(/"/g, '""')}"`;
+          rowArr.push(safe);
+        }
+        lines.push(rowArr.join(","));
+      }
+      const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state.currentModule.name || "modul"}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    themeToggleBtn.addEventListener("click", () => {
+      state.darkMode = !state.darkMode;
+      document.documentElement.setAttribute("data-theme", state.darkMode ? "dark" : "light");
+      themeToggleBtn.classList.toggle("toggle-on", !state.darkMode);
+    });
+
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert("Bitte zuerst einloggen.");
+        window.location.href = "/login.html";
+        return;
+      }
+
+      state.session = session;
+      state.user = session.user;
+      statusUserEl.textContent = `Angemeldet als ${state.user.email}`;
+
+      let firmaId = localStorage.getItem("Tenra.currentFirmaId");
+      let role = null;
+
+      if (!firmaId) {
+        const { data: fu, error } = await supabase
+          .from("firmen_user")
+          .select("firma_id, role, status")
+          .eq("user_id", state.user.id)
+          .eq("status", "accepted")
+          .maybeSingle();
+
+        if (error || !fu) {
+          alert("Kein Firmenzugang gefunden.");
+          return;
+        }
+
+        firmaId = fu.firma_id;
+        role = fu.role;
+        localStorage.setItem("Tenra.currentFirmaId", firmaId);
+      } else {
+        const { data: fu } = await supabase
+          .from("firmen_user")
+          .select("role, status")
+          .eq("user_id", state.user.id)
+          .eq("firma_id", firmaId)
+          .eq("status", "accepted")
+          .maybeSingle();
+
+        role = fu?.role ?? null;
+      }
+
+      state.firma_id = firmaId;
+      state.role = role;
+
+      statusUserEl.textContent =
+        `Angemeldet als ${state.user.email}` +
+        (role ? ` – Rolle: ${role}` : "");
+
+      document.documentElement.setAttribute("data-theme", state.darkMode ? "dark" : "light");
+      themeToggleBtn.classList.toggle("toggle-on", !state.darkMode);
+
+      await loadModules();
+    }
+
+    init();
+  </script>
 </body>
 </html>
