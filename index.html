@@ -1,319 +1,458 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tenra — Operative Plattform für Teams & Schichten</title>
+  <title>Tenra — Die klare Plattform für Schichtteams & Werke</title>
   <link rel="stylesheet" href="css/style.css" />
-  <meta name="description" content="Schichtbuch, Tagesjournal, Urlaubsplanung & mehr — in einer edlen, klaren Oberfläche, gebaut für Produktion & Büroteams." />
+  <meta
+    name="description"
+    content="Tenra bündelt Schichtbuch, Tagesjournal, Urlaubsplanung & Aufgaben in einer klaren Oberfläche – gebaut für Produktion, Werke & Schichtteams."
+  />
 </head>
+
 <body>
-  <!-- ====== BACKDROP DECOR ====== -->
+  <!-- AURORA BACKDROP -->
   <div class="bg-aurora" aria-hidden="true"></div>
 
-  <!-- ====== NAVBAR ====== -->
+  <!-- NAVBAR -->
   <header class="nav">
     <a class="brand" href="#">
       <span class="logo-dot"></span>
-      <span class="brand-text">Tenra</span>
+      <div class="brand-block">
+        <span class="brand-text">Tenra</span>
+        <span class="brand-sub">Operative Plattform für Schichtteams</span>
+      </div>
     </a>
 
     <nav class="nav-links" aria-label="Hauptnavigation">
-      <a href="#features">Features</a>
+      <a href="#features">Produkt</a>
       <a href="#module">Module</a>
       <a href="#security">Sicherheit</a>
-      <a href="#about">Über uns</a>
+      <a href="#about">Über Tenra</a>
       <a href="#contact">Kontakt</a>
     </nav>
 
     <div class="nav-cta">
-      <a class="link" href="login.html">Login</a>
-      <button id="dm-toggle" class="ghost">Dark</button>
-      <a class="btn" href="#demo">Demo ansehen</a>
+      <a class="link" href="login.html">Kunden-Login</a>
+      <button id="dm-toggle" class="ghost ghost-small" type="button">Theme</button>
+      <a class="btn btn-sm-primary" href="#demo">Demo starten</a>
     </div>
 
-    <button class="burger" id="burger" aria-label="Menü öffnen">
+    <button class="burger" id="burger" aria-label="Menü öffnen" type="button">
       <span></span><span></span><span></span>
     </button>
   </header>
 
-  <!-- ====== MOBILE MENU ====== -->
+  <!-- MOBILE MENU -->
   <div class="mobile-menu" id="mobileMenu" hidden>
-    <a href="#features">Features</a>
+    <a href="#features">Produkt</a>
     <a href="#module">Module</a>
     <a href="#security">Sicherheit</a>
-    <a href="#about">Über uns</a>
+    <a href="#about">Über Tenra</a>
     <a href="#contact">Kontakt</a>
-    <a href="login.html" class="login">Login</a>
+    <a href="login.html" class="login">Kunden-Login</a>
+    <a href="#demo" class="primary-mobile-cta">Demo im Browser testen</a>
   </div>
 
-  <!-- ====== HERO ====== -->
-  <section class="hero container">
-    <div class="hero-text">
-      <h1>Die klare Plattform für <span class="hl">Schichten & Alltag</span>.</h1>
-      <p class="subtitle">
-        Ein edles, schnelles System für Firmen jeder Größe: <strong>Schichtbuch</strong>, <strong>Tagesjournal</strong>,
-        <strong>Urlaubsplanung</strong> & <strong>Aufgaben</strong> in einer Oberfläche. Datenschutz-fokussiert,
-        modular, erweiterbar.
-      </p>
-      <div class="hero-actions">
-        <a class="btn" href="#demo">Interaktive Demo</a>
-        <a class="ghost" href="login.html">Zum Login</a>
-      </div>
-      <div class="trust">
-        <span class="pill">Rollen & Rechte</span>
-        <span class="pill">EU-Datenschutz</span>
-        <span class="pill">Offline-freundlich</span>
-      </div>
-    </div>
-    <div class="hero-card glass">
-      <div class="hero-head">
-        <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
-      </div>
-      <div class="hero-preview">
-        <h3>Heute · Schichtbuch</h3>
-        <ul>
-          <li><span class="badge">999</span> Wechseln 111→112 erfolgreich · 06:45</li>
-          <li><span class="badge">888</span> Material knapp · Papier 202A · 09:10</li>
-          <li><span class="badge">777</span> Störung behoben · Sensor Q7 · 10:22</li>
-        </ul>
-        <div class="hero-footer">
-          <button class="mini">Eintrag anlegen</button>
-          <button class="mini ghost">Export</button>
-        </div>
-      </div>
-    </div>
-  </section>
+  <main>
+    <!-- HERO -->
+    <section class="hero container">
+      <div class="hero-text">
+        <div class="hero-label">Für Werke, Linien & Schichtteams</div>
 
-  <!-- ====== FEATURE GRID ====== -->
-  <section id="features" class="section container">
-    <h2>Warum Teams Tenra lieben</h2>
-    <p class="section-sub">Klarer Fokus, weniger Klicks, mehr Überblick.</p>
-    <div class="grid-3">
-      <article class="card glass">
-        <div class="icon">{}</div>
-        <h3>Glasmorph UI</h3>
-        <p>Oberfläche mit sanften Schatten, klarer Typo und schnellen Interaktionen.</p>
-      </article>
-      <article class="card glass">
-        <div class="icon">⏱️</div>
-        <h3>Blitzschnell</h3>
-        <p>Freundliche Ansichten — keine Wartezeiten beim Tippen.</p>
-      </article>
-      <article class="card glass">
-        <div class="icon">🔒</div>
-        <h3>Rollen & Rechte</h3>
-        <p>Firma → Linien → Nutzerrollen. Jeder sieht nur, was für ihn relevant ist.</p>
-      </article>
-      <article class="card glass">
-        <div class="icon">🧱</div>
-        <h3>Module wie Bausteine</h3>
-        <p>Schichtbuch, Tagesjournal, Urlaub, Aufgaben. Aktivierbar pro Firma — ohne Chaos.</p>
-      </article>
-      <article class="card glass">
-        <div class="icon">📈</div>
-        <h3>Reports & Exporte</h3>
-        <p>MES-Feelig ohne kompletziertes MES System</p>
-      </article>
-      <article class="card glass">
-        <div class="icon">⚙️</div>
-        <h3>Nahtlos erweiterbar</h3>
-        <p>Jede Funktion für jede Firma passend und noch viel mehr!</p>
-      </article>
-    </div>
-  </section>
+        <h1>
+          Die klare Plattform,
+          <span class="hl">die deine Schichten im Griff hat.</span>
+        </h1>
 
-  <!-- ====== MODULE SHOWCASE ====== -->
-  <section id="module" class="section container">
-    <h2>Module</h2>
-    <p class="section-sub">Starte mit einem, aktiviere den Rest später.</p>
-
-    <div class="modules">
-      <article class="mod glass">
-        <div class="mod-head">
-          <span class="tag">Kern</span>
-          <h3>Schichtbuch</h3>
-        </div>
-        <p>Tägliche Einträge mit Linie, Uhrzeit, Status & Anhängen. Kommentare & Mentions inklusive.</p>
-        <ul class="bullets">
-          <li>Live-Filter nach Linie/Schicht</li>
-          <li>Vorlagen für wiederkehrende Einträge</li>
-          <li>Export für Schichtübergabe</li>
-        </ul>
-        <a class="link" href="app/schichtbuch.html">Mehr ansehen →</a>
-      </article>
-
-      <article class="mod glass">
-        <div class="mod-head">
-          <span class="tag">Team</span>
-          <h3>Tagesjournal</h3>
-        </div>
-        <p>Management-Notizen, To-dos, Entscheidungen — sauber getrennt pro Firma & Bereich.</p>
-        <ul class="bullets">
-          <li>Labels, Prioritäten, Erwähnungen</li>
-          <li>Checklisten & Verantwortungen</li>
-          <li>Timeline mit Änderungen</li>
-        </ul>
-        <a class="link" href="app/tagesbuch.html">Mehr ansehen →</a>
-      </article>
-
-      <article class="mod glass">
-        <div class="mod-head">
-          <span class="tag">Planung</span>
-          <h3>Urlaub & Abwesenheit</h3>
-        </div>
-        <p>Einfacher Kalender mit Konten (U, Z, TZug). Regeln pro Modell & Linie.</p>
-        <ul class="bullets">
-          <li>Automatische Prüfungen</li>
-          <li>Konten-Abzüge & Exporte</li>
-          <li>Druckfreundliche Ansichten</li>
-        </ul>
-        <a class="link" href="#demo">Mehr ansehen →</a>
-      </article>
-    </div>
-  </section>
-
-  <!-- ====== DEMO + PREISE (versteckt bis Klick) ====== -->
-  <section id="demo" class="section container">
-    <div class="demo-wrap glass">
-      <div class="demo-copy">
-        <h2>Teste die Demo — ohne Risiko</h2>
-        <p>Erlebe die Oberfläche mit Beispiel-Daten. Keine Installation, läuft im Browser.</p>
-        <div class="actions">
-          <a class="btn" href="app/dashboard.html">Demo starten</a>
-          <button id="revealPricing" class="ghost">Preise ansehen</button>
-        </div>
-        <p class="note">Hinweis: Für echte Einsätze aktivieren wir Module pro Firma & Linie.</p>
-      </div>
-      <div class="demo-side">
-        <div class="stat">
-          <strong>97%</strong>
-          <span>Zeitersparnis pro Übergabe</span>
-        </div>
-        <div class="stat">
-          <strong>3-5 Min</strong>
-          <span>durchschnittliche Einarbeitung</span>
-        </div>
-        <div class="stat">
-          <strong>1 Oberfläche</strong>
-          <span>für Shopfloor & Büro</span>
-        </div>
-      </div>
-    </div>
-
-    <div id="pricing" class="pricing glass" hidden>
-      <h3>Transparente Preise</h3>
-      <p class="muted">Skalierbar für kleine Teams bis große Werke. Monatsweise kündbar.</p>
-      <div class="price-tiers">
-        <div class="tier">
-          <h4>Starter</h4>
-          <div class="price"><span>-</span> €/Monat</div>
-          <ul>
-            <li>1 Firma, 2 Module</li>
-            <li>Bis 10 Nutzer</li>
-            <li>Exports, Vorlagen</li>
-          </ul>
-          <a class="btn ghost" href="#contact">Anfragen</a>
-        </div>
-        <div class="tier highlight">
-          <h4>Team</h4>
-          <div class="price"><span>-</span> €/Monat</div>
-          <ul>
-            <li>1 Firma, alle Module</li>
-            <li>Bis 40 Nutzer</li>
-            <li>Rollen & Rechte, Support</li>
-          </ul>
-          <a class="btn" href="#contact">Unverbindlich starten</a>
-        </div>
-        <div class="tier">
-          <h4>Werk</h4>
-          <div class="price"><span>Individuell</span></div>
-          <ul>
-            <li>Mehrere Firmen/Linien</li>
-            <li>SSO/LDAP & API</li>
-            <li>Onboarding vor Ort</li>
-          </ul>
-          <a class="btn ghost" href="#contact">Gespräch buchen</a>
-        </div>
-      </div>
-      <p class="fineprint">Alle Preise zzgl. USt. Module können pro Firma aktiviert/deaktiviert werden.</p>
-    </div>
-  </section>
-
-  <!-- ====== SECURITY ====== -->
-  <section id="security" class="section container">
-    <h2>Sicherheit & Datenschutz</h2>
-    <div class="grid-3">
-      <article class="card glass">
-        <h3>EU-Datenschutz</h3>
-        <p>Datensparsam, rollenbasiert, klare Export-Kontrolle. Optional EU-Hosting.</p>
-      </article>
-      <article class="card glass">
-        <h3>Audit-Trail</h3>
-        <p>Änderungsverlauf pro Eintrag — wer, was, wann. Revisionssicher exportierbar.</p>
-      </article>
-      <article class="card glass">
-        <h3>SSO-bereit</h3>
-        <p>Später via OIDC/SAML integrierbar. Heute schon sauber getrennte Sessions.</p>
-      </article>
-    </div>
-  </section>
-
-  <!-- ====== ABOUT ====== -->
-  <section id="about" class="section container">
-    <div class="about glass">
-      <div>
-        <h2>Wer dahinter steckt</h2>
-        <p>
-          Ich bin <strong>Christos</strong> — aus der Produktion, für die Produktion. Die Plattform
-          entstand, weil ich selbst täglich mit Schichtwechsel, Planungen und Notizen arbeite.
-          Fokus: <em>ein schönes UI, das wirklich Zeit spart</em>.
+        <p class="subtitle">
+          Tenra bündelt <strong>Schichtbuch</strong>, <strong>Tagesjournal</strong>,
+          <strong>Urlaub & Abwesenheit</strong> und <strong>Aufgaben</strong> in einer Oberfläche –
+          damit jeder weiß, was gerade läuft.
         </p>
-        <ul class="bullets">
-          <li>Praxisnah entwickelt, kein theoretisches Laborsystem</li>
-          <li>Modular – wächst mit deiner Firma</li>
-          <li>Design, das Vertrauen schafft</li>
-        </ul>
-      </div>
-      <div class="about-side">
-        <div class="quote">„So clean, dass es Spaß macht – so klar, dass es bleibt.“</div>
-        <a class="btn" href="#contact">Kennenlernen</a>
-      </div>
-    </div>
-  </section>
 
-  <!-- ====== CONTACT ====== -->
-  <section id="contact" class="section container">
-    <h2>Unverbindlich sprechen</h2>
-    <form class="contact glass" onsubmit="return false">
-      <div class="row">
-        <label>Firma
-          <input type="text" placeholder="z. B. Bosch, Müller GmbH" required>
-        </label>
-        <label>E-Mail
-          <input type="email" placeholder="name@firma.de" required>
-        </label>
-      </div>
-      <label>Nachricht
-        <textarea rows="4" placeholder="Worum geht’s? Welche Module sind spannend?"></textarea>
-      </label>
-      <div class="actions">
-        <button class="btn" type="submit">Anfrage senden</button>
-        <a class="ghost" href="register.html">Direkt registrieren</a>
-      </div>
-      <p class="muted small">Mit dem Absenden erklärst du dich mit der Kontaktaufnahme einverstanden.</p>
-    </form>
-  </section>
+        <div class="hero-actions reveal">
+          <a class="btn" href="#demo">Demo jetzt im Browser testen</a>
+          <a class="ghost" href="login.html">Login für bestehende Kunden</a>
+        </div>
 
-  <!-- ====== FOOTER ====== -->
+        <p class="hero-microcopy">
+          Kein Vertrag. Kein Risiko. Einfach ausprobieren und im Team zeigen.
+        </p>
+
+        <div class="trust">
+          <span class="pill pill-strong">Rollen & Rechte pro Firma</span>
+          <span class="pill">EU-Datenschutz</span>
+          <span class="pill">Offline-freundlich</span>
+        </div>
+
+        <div class="trust-row">
+          <div class="trust-item">
+            <span class="trust-label">Einarbeitung</span>
+            <span class="trust-value">3–5 Minuten</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-label">Einführung</span>
+            <span class="trust-value">ohne IT-Projekt</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hero-card glass">
+        <div class="hero-head">
+          <span class="dot red "></span>
+          <span class="dot yellow "></span>
+          <span class="dot green "></span>
+          <span class="hero-head-label">Schichtbuch · Vorschau</span>
+        </div>
+
+        <div class="hero-preview">
+          <div class="hero-preview-top">
+            <h3>Heute · Schichtbuch</h3>
+            <span class="hero-preview-meta">Linie 222 · Frühschicht</span>
+          </div>
+
+          <ul class="hero-list">
+            <li>
+              <span class="badge badge-success">OK</span>
+              <span class="hero-line-main">Wechsel 111→112 erfolgreich</span>
+              <span class="hero-line-meta">06:45 · Übergabe dokumentiert</span>
+            </li>
+            <li>
+              <span class="badge badge-warning">Knapp</span>
+              <span class="hero-line-main">Material Papier 202A</span>
+              <span class="hero-line-meta">09:10 · Bestellhinweis erstellt</span>
+            </li>
+            <li>
+              <span class="badge badge-info">Fix</span>
+              <span class="hero-line-main">Störung Sensor Q7 behoben</span>
+              <span class="hero-line-meta">10:22 · Ursache vermerkt</span>
+            </li>
+          </ul>
+
+          <div class="hero-footer">
+            <button class="mini" type="button">Neuen Eintrag anlegen</button>
+            <button class="mini ghost" type="button">Übergabe exportieren</button>
+          </div>
+
+          <p class="hero-footnote">
+            Jede Änderung wird revisionssicher mit Uhrzeit & Verantwortlichem gespeichert.
+          </p>
+        </div>
+      </aside>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="section container">
+      <header class="section-header">
+        <h2>Warum Teams Tenra wählen</h2>
+        <p class="section-sub">
+          Klarer Fokus auf das Wesentliche: weniger Suchen, weniger Chaos, mehr Überblick.
+        </p>
+      </header>
+
+      <div class="grid-3">
+        <article class="card glass reveal">
+          <div class="icon">💎</div>
+          <h3>Klare Premium-Oberfläche</h3>
+          <p>Glasmorph-UI, ruhige Farben, starke Lesbarkeit – wirkt wie ein modernes Werkzeug, nicht wie eine Tabelle.</p>
+        </article>
+
+        <article class="card glass reveal">
+          <div class="icon">⚡</div>
+          <h3>Sofort reaktionsschnell</h3>
+          <p>Einträge ohne Wartezeit, schnelle Filter – so schnell, dass Schichten im Flow bleiben.</p>
+        </article>
+
+        <article class="card glass reveal">
+          <div class="icon">🔒</div>
+          <h3>Saubere Rollen & Rechte</h3>
+          <p>Firma → Abteilung → Nutzerrechte. Jeder sieht genau das, was er sehen soll – nicht mehr, nicht weniger.</p>
+        </article>
+
+        <article class="card glass reveal">
+          <div class="icon">🧩</div>
+          <h3>Module wie Bausteine</h3>
+          <p>Du startest mit wenigen Modulen und aktivierst weitere, wenn das Team bereit ist. Kein Overload.</p>
+        </article>
+
+        <article class="card glass reveal">
+          <div class="icon">📊</div>
+          <h3>Auswertungen ohne Chaos</h3>
+          <p>Klar verständliche Reports & Exporte – damit du Entscheidungen nicht aus dem Bauch triffst.</p>
+        </article>
+
+        <article class="card glass reveal">
+          <div class="icon">⚙️</div>
+          <h3>Passt sich deinem Werk an</h3>
+          <p>Struktur, Linien, Modelle – Tenra wird um dich gebaut, nicht andersherum.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- MODULES -->
+    <section id="module" class="section container">
+      <header class="section-header">
+        <h2>Module, die den Alltag wirklich abdecken</h2>
+        <p class="section-sub">Du musst nicht alles auf einmal nutzen – starte schlank und erweitere, wenn es Sinn ergibt.</p>
+      </header>
+
+      <div class="modules reveal">
+        <article class="mod glass">
+          <div class="mod-head">
+            <span class="tag tag-core">Kernmodul</span>
+            <h3>Schichtbuch</h3>
+          </div>
+          <p>
+            Tägliche Einträge mit Linie, Uhrzeit & Status – inklusive Kommentaren und Übergaben.
+          </p>
+          <ul class="bullets">
+            <li>Live-Filter & schnelle Suche</li>
+            <li>Vorlagen für wiederkehrende Themen</li>
+            <li>Übergaben-Export für Folge-Schicht</li>
+          </ul>
+          <a class="link" href="app/schichtbuch.html">Ansicht im System öffnen →</a>
+        </article>
+
+        <article class="mod glass">
+          <div class="mod-head">
+            <span class="tag tag-team">Team</span>
+            <h3>Tagesjournal</h3>
+          </div>
+          <p>
+            Entscheidungen, Notizen und Verantwortlichkeiten – sauber dokumentiert, statt in Chats zu verschwinden.
+          </p>
+          <ul class="bullets">
+            <li>Labels & Prioritäten</li>
+            <li>Checklisten pro Tag oder Thema</li>
+            <li>Timeline für Verlauf & Historie</li>
+          </ul>
+          <a class="link" href="app/tagesbuch.html">Ansicht im System öffnen →</a>
+        </article>
+
+        <article class="mod glass">
+          <div class="mod-head">
+            <span class="tag tag-planning">Planung</span>
+            <h3>Urlaub & Abwesenheit</h3>
+          </div>
+          <p>
+            Klarer Kalender mit Konten und Regeln pro Schichtmodell – damit niemand den Überblick verliert.
+          </p>
+          <ul class="bullets">
+            <li>Automatische Prüfungen & Hinweise</li>
+            <li>Konten-Abzüge pro Modell</li>
+            <li>Druck- & Exportansichten für Aushänge</li>
+          </ul>
+          <a class="link" href="#demo">Kalender in der Demo ansehen →</a>
+        </article>
+      </div>
+    </section>
+
+    <!-- DEMO -->
+    <section id="demo" class="section container">
+      <div class="demo-wrap glass">
+        <div class="demo-copy">
+          <h2>Teste die Demo – direkt im Browser</h2>
+          <p>
+            Voll funktionsfähige Oberfläche mit Beispieldaten. Ideal, um Tenra intern zu zeigen und Feedback zu sammeln.
+          </p>
+          <div class="actions">
+            <a class="btn" href="app/dashboard.html">Demo starten</a>
+            <button id="revealPricing" class="ghost" type="button">Preise & Pläne anzeigen</button>
+          </div>
+          <p class="note">
+            Für produktive Einsätze richten wir Tenra gemeinsam auf deine Firma, Abteilungen und Linien aus.
+          </p>
+        </div>
+
+        <div class="demo-side">
+          <div class="stat">
+            <strong>bis zu 97%</strong>
+            <span>weniger Suchzeiten im Schichtalltag*</span>
+          </div>
+          <div class="stat">
+            <strong>3–5 Minuten</strong>
+            <span>typische Einarbeitungszeit pro Nutzer</span>
+          </div>
+          <div class="stat">
+            <strong>1 Oberfläche</strong>
+            <span>für Shopfloor, Meister & Büro</span>
+          </div>
+          <p class="stat-footnote">*basierend auf Erfahrungswerten aus der Praxis.</p>
+        </div>
+      </div>
+
+      <!-- PRICING (hidden) -->
+      <div id="pricing" class="pricing glass" hidden>
+        <h3>Transparente Pläne – auf dein Werk zugeschnitten</h3>
+        <p class="muted">
+          Tenra wächst mit dir: vom kleinen Team bis zum Werk mit mehreren Linien. Monatlich kündbar, klare Lizenzstruktur.
+        </p>
+
+        <div class="price-tiers">
+          <div class="tier">
+            <h4>Starter</h4>
+            <div class="price"><span>-</span> €/Monat</div>
+            <ul>
+              <li>1 Firma, bis zu 2 Module</li>
+              <li>Bis 10 Nutzer</li>
+              <li>Exports & Vorlagen inklusive</li>
+            </ul>
+            <a class="btn ghost" href="#contact">Für kleines Team anfragen</a>
+          </div>
+
+          <div class="tier highlight">
+            <div class="tier-label">Beliebteste Wahl</div>
+            <h4>Team</h4>
+            <div class="price"><span>-</span> €/Monat</div>
+            <ul>
+              <li>Alle Module freigeschaltet</li>
+              <li>Bis 40 Nutzer</li>
+              <li>Rollen & Rechte pro Abteilung</li>
+            </ul>
+            <a class="btn" href="#contact">Unverbindlich Erstgespräch starten</a>
+          </div>
+
+          <div class="tier">
+            <h4>Werk</h4>
+            <div class="price"><span>Individuell</span></div>
+            <ul>
+              <li>Mehrere Firmen & Linien</li>
+              <li>SSO/LDAP & API-Integration</li>
+              <li>Onboarding & Workshop vor Ort</li>
+            </ul>
+            <a class="btn ghost" href="#contact">Individuelles Angebot buchen</a>
+          </div>
+        </div>
+
+        <p class="fineprint">
+          Alle Preise zzgl. USt. Module bleiben flexibel aktivierbar – du zahlst nur, was du wirklich nutzt.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section id="security" class="section container">
+      <header class="section-header section-header-tight">
+        <h2>Sicherheit & Datenschutz, die Vertrauen schaffen</h2>
+        <p class="section-sub">
+          Tenra orientiert sich an gängigen Standards – ohne die Oberfläche zu überladen.
+        </p>
+      </header>
+
+      <div class="grid-3">
+        <article class="card glass">
+          <h3>EU-Datenschutz</h3>
+          <p>Rollenbasiert, datensparsam, optional EU-Hosting – damit du intern und extern sauber argumentieren kannst.</p>
+        </article>
+        <article class="card glass">
+          <h3>Audit-Trail</h3>
+          <p>
+            Jede relevante Änderung wird mit <strong>wer, was, wann</strong> mitgeloggt – inklusive Exportoption für Audits.
+          </p>
+        </article>
+        <article class="card glass">
+          <h3>SSO-bereit</h3>
+          <p>Vorbereitet für spätere Integration via OIDC/SAML – wenn ihr soweit seid.</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="section container">
+      <div class="about glass">
+        <div>
+          <h2>Aus der Produktion – für die Produktion</h2>
+          <p>
+            Ich bin <strong>Christos</strong> – komme selbst von der Linie und habe Tenra aus dem echten Schichtalltag heraus entwickelt,
+            nicht am Whiteboard.
+          </p>
+          <ul class="bullets">
+            <li>Direkt aus der Praxis entstanden</li>
+            <li>Modular & skalierbar für verschiedene Werke</li>
+            <li>Design, das Vertrauen bei Belegschaft & Management schafft</li>
+          </ul>
+        </div>
+
+        <aside class="about-side">
+          <div class="quote">„So clean, dass man es gerne offen lässt.“</div>
+          <p class="quote-sub">– Feedback aus einem Schichtteam</p>
+          <a class="btn" href="#contact">Kurz kennenlernen & Bedarf klären</a>
+        </aside>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="section container">
+      <header class="section-header">
+        <h2>Unverbindlich sprechen – in 2 Minuten angefragt</h2>
+        <p class="section-sub">
+          Kurzes Formular ausfüllen, wir melden uns mit einem Vorschlag, wie Tenra zu eurem Werk passt.
+        </p>
+      </header>
+
+      <form class="contact glass" onsubmit="return false">
+        <div class="row">
+          <label>Firma
+            <input type="text" placeholder="z. B. Müller GmbH · Werk 1" required />
+          </label>
+
+          <label>E-Mail
+            <input type="email" placeholder="name@firma.de" required />
+          </label>
+        </div>
+
+        <label>Nachricht
+          <textarea
+            rows="4"
+            placeholder="Kurz: Wie viele Linien, wie viele Schichten, welche Module sind spannend?"
+          ></textarea>
+        </label>
+
+        <div class="actions">
+          <button class="btn" type="submit">Anfrage senden</button>
+          <a class="ghost" href="register.html">Direkt Testzugang anlegen</a>
+        </div>
+
+        <p class="muted small">
+          Mit dem Absenden erklärst du dich mit der Kontaktaufnahme einverstanden. Wir geben deine Daten nicht weiter.
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
   <footer class="footer container">
-    <div>© <span id="y"></span> Tenra — Eine klare Plattform für Teams.</div>
+    <div>© <span id="y"></span> Tenra — Die klare Plattform für Teams & Schichten.</div>
     <nav>
       <a href="#">Impressum</a>
       <a href="#">Datenschutz</a>
       <a href="#">AGB</a>
     </nav>
   </footer>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const elements = document.querySelectorAll('.reveal');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+        // danach nicht mehr beobachten → Performance
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.12
+  });
+
+  elements.forEach(el => observer.observe(el));
+});
+</script>
+
+
 
   <script src="js/ui.js"></script>
 </body>

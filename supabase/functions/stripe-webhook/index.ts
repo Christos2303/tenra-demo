@@ -96,6 +96,7 @@ serve(async (req) => {
         firma_id: firmaId,
         user_id: userId,
         role: "owner",
+        status: "accepted"
       });
       if (relErr) console.error("❌ Fehler beim Hinzufügen zu firmen_user:", relErr.message);
       else console.log("👑 User wurde als Owner hinzugefügt:", email);
