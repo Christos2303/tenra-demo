@@ -280,10 +280,7 @@ linie_id: state.linie || null,
       const date = document.getElementById('o_date').value;
       if(!title || !date || !state.abt) return alert('Titel, Datum, Abteilung & Linie sind erforderlich.');
       const { error } = await supabase.from('tagesaufgaben_templates').insert({
-  firma_id: state.firm,
-abteilung_id: state.abt,
-linie_id: state.linie || null,
-
+  firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
 
         typ: 'einmalig', datum: date, titel: title, beschreibung: desc || null, aktiv: true
       });
@@ -298,10 +295,7 @@ linie_id: state.linie || null,
       const date = document.getElementById('h_date').value;
       if(!text || !date || !state.abt) return alert('Hinweis, Datum, Abteilung & Linie sind erforderlich.');
       const { error } = await supabase.from('tagesaufgaben_hinweise').insert({
-        firma_id: state.firm,
-abteilung_id: state.abt,
-linie_id: state.linie || null,
-
+        firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
         datum: date, text
       });
       if(error){ alert(error.message); return; }
@@ -446,12 +440,10 @@ state.role = active.role;
       const { data, error } = await supabase
         .from('tagesaufgaben_templates')
         .select('id, titel, beschreibung')
-        .eq('firma_id', state.firm)
-.eq('abteilung_id', state.abt)
-.eq('typ', 'permanent')
-.eq('aktiv', true)
-.eq('linie_id', state.linie ?? null)
-
+        .match({ firma_id: state.firm,
+abteilung_id: state.abt,
+linie_id: state.linie || null,
+ typ:'permanent', aktiv:true })
         .order('id');
       if(error){ colPermanent.innerHTML = `<div class="empty">${error.message}</div>`; return; }
 
@@ -507,13 +499,10 @@ if (doneSet.has(`${tpl.id}|${state.today}`)) {
       const { data, error } = await supabase
         .from('tagesaufgaben_templates')
         .select('id, titel, beschreibung, datum')
-        .eq('firma_id', state.firm)
-.eq('abteilung_id', state.abt)
-.eq('typ', 'einmalig')
-.eq('aktiv', true)
-.eq('datum', state.today)
-.eq('linie_id', state.linie ?? null)
-
+        .match({ firma_id: state.firm,
+abteilung_id: state.abt,
+linie_id: state.linie || null,
+ typ:'einmalig', aktiv:true, datum: state.today })
         .order('id');
       if(error){ colOnce.innerHTML = `<div class="empty">${error.message}</div>`; return; }
       if(!data?.length){ colOnce.innerHTML = `<div class="empty">Keine besonderen Aufgaben heute.</div>`; return; }
@@ -550,11 +539,7 @@ if (doneSet.has(`${tpl.id}|${state.today}`)) {
       const { data, error } = await supabase
         .from('tagesaufgaben_hinweise')
         .select('id, text')
-        .eq('firma_id', state.firm)
-.eq('abteilung_id', state.abt)
-.eq('linie_id', state.linie ?? null)
-.eq('datum', state.today)
-
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, datum: state.today })
         .order('id');
       if(error){ colHints.innerHTML = `<div class="empty">${error.message}</div>`; return; }
 
@@ -577,8 +562,7 @@ if (doneSet.has(`${tpl.id}|${state.today}`)) {
       const payload = {
   firma_id: state.firm,
   abteilung_id: state.abt,
-  linie_id: state.linie || null,
-
+  linie_id: state.linie,
   template_id,
   datum: state.today,
   schicht: getCurrentShift(),
