@@ -10,6 +10,120 @@
 
   <style>
 
+@media (max-width: 768px) {
+
+  body {
+    padding: 8px;
+  }
+
+  /* Layout auf 1 Spalte */
+  .layout {
+    grid-template-columns: 1fr !important;
+    gap: 10px;
+  }
+
+  /* Sidebar zuerst | Hauptbereich danach */
+  .panel {
+    padding: 10px !important;
+  }
+
+  /* Module-Liste kompakter */
+  .module-list {
+    max-height: 40vh !important;
+  }
+
+  /* Module kleiner */
+  .module-item {
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+  }
+  .module-item span.meta {
+    font-size: 10px !important;
+  }
+
+  /* Header kleiner */
+  .top-bar h1 {
+    font-size: 20px !important;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Toolbar umbricht auf mehrere Reihen */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Buttons kompakt */
+  button,
+  button.small,
+  button.icon {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  /* Tabelle — horizontales Scrollen ermöglichen */
+  .grid-wrapper {
+    max-height: 52vh !important;
+    overflow-x: auto !important;
+  }
+
+  table.sheet {
+    min-width: 600px !important;
+  }
+
+  /* Dropdowns breiter */
+  .dropdown {
+    padding: 10px 12px !important;
+    font-size: 13px !important;
+  }
+
+  /* Tutorial-Karten kleiner */
+  .tutorial-card {
+    padding: 10px !important;
+    font-size: 12px !important;
+  }
+  .tutorial-card-title {
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+}
+
+@media (max-width: 768px) {
+  td.excel-cell {
+    max-width: 80px !important;
+    font-size: 12px !important;
+    padding: 3px !important;
+  }
+
+  table.sheet th,
+  table.sheet td {
+    padding: 3px 4px !important;
+    font-size: 11px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #tutorialContainer {
+    gap: 12px !important;
+  }
+  .tutorial-cards-row {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  }
+}
+
 /* =========================
    TENRA ACADEMY / TUTORIAL
    ========================= */
@@ -1126,6 +1240,28 @@ table.sheet td.excel-cell {
 body.is-fullscreen {
   overflow: hidden;
 }
+@media (max-width: 768px) {
+
+  /* Button sichtbar machen */
+  #toggleSidebar {
+    display: block !important;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  /* Sidebar standardmäßig verstecken */
+  .panel:first-child {
+    display: none !important;
+  }
+
+  /* Wenn aktiv → anzeigen */
+  .panel.show-sidebar:first-child {
+    display: block !important;
+  }
+
+}
 
   </style>
 </head>
@@ -1140,6 +1276,9 @@ body.is-fullscreen {
       <button onclick="window.location.href='/app/dashboard.html'" class="small" type="button">← Zur Übersicht</button>
     </div>
   </div>
+<button id="toggleSidebar" class="small ghost icon" style="display:none;">
+  📁 Module
+</button>
 
   <div class="layout">
     <!-- SIDEBAR -->
@@ -3476,6 +3615,14 @@ if (state.currentModule?.is_locked === true) {
       document.documentElement.setAttribute("data-theme", state.darkMode ? "dark" : "light");
       themeToggleBtn.classList.toggle("toggle-on", !state.darkMode);
     });
+
+
+    const sidebar = document.querySelector(".layout .panel"); 
+const toggleSidebarBtn = document.getElementById("toggleSidebar");
+
+toggleSidebarBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("show-sidebar");
+});
 
     async function init() {
       const { data: { session } } = await supabase.auth.getSession();
