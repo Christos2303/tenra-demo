@@ -259,12 +259,9 @@
     document.getElementById('p_save')?.addEventListener('click', async ()=>{
       const title = document.getElementById('p_title').value.trim();
       const desc = document.getElementById('p_desc').value.trim();
-      if(!title || !state.abt) return alert('Titel, Abteilung & Linie sind erforderlich.');
+      if(!title || !state.abt || !state.linie) return alert('Titel, Abteilung & Linie sind erforderlich.');
       const { error } = await supabase.from('tagesaufgaben_templates').insert({
-  firma_id: state.firm,
-abteilung_id: state.abt,
-linie_id: state.linie || null,
-
+  firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
 
         typ: 'permanent', titel: title, beschreibung: desc || null, aktiv: true
       });
@@ -278,7 +275,7 @@ linie_id: state.linie || null,
       const title = document.getElementById('o_title').value.trim();
       const desc = document.getElementById('o_desc').value.trim();
       const date = document.getElementById('o_date').value;
-      if(!title || !date || !state.abt) return alert('Titel, Datum, Abteilung & Linie sind erforderlich.');
+      if(!title || !date || !state.abt || !state.linie) return alert('Titel, Datum, Abteilung & Linie sind erforderlich.');
       const { error } = await supabase.from('tagesaufgaben_templates').insert({
   firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
 
@@ -293,7 +290,7 @@ linie_id: state.linie || null,
     document.getElementById('h_save')?.addEventListener('click', async ()=>{
       const text = document.getElementById('h_text').value.trim();
       const date = document.getElementById('h_date').value;
-      if(!text || !date || !state.abt) return alert('Hinweis, Datum, Abteilung & Linie sind erforderlich.');
+      if(!text || !date || !state.abt || !state.linie) return alert('Hinweis, Datum, Abteilung & Linie sind erforderlich.');
       const { error } = await supabase.from('tagesaufgaben_hinweise').insert({
         firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie,
         datum: date, text
@@ -421,13 +418,8 @@ state.role = active.role;
     }
 
     async function refreshAll(skipHistory=false){
-      if(!state.abt){
-  colPermanent.innerHTML = `<div class="empty">Bitte Abteilung wählen.</div>`;
-  colOnce.innerHTML = '';
-  colHints.innerHTML = '';
-  return;
-}
-
+      if(!state.abt || !state.linie){ colPermanent.innerHTML = `<div class="empty">Bitte Abteilung & Linie wählen.</div>`;
+        colOnce.innerHTML = ''; colHints.innerHTML=''; return; }
 
       await Promise.all([renderPermanent(), renderOnce(), renderHints()]);
       if(!skipHistory && (state.role==='owner' || state.role==='admin')){
@@ -440,10 +432,7 @@ state.role = active.role;
       const { data, error } = await supabase
         .from('tagesaufgaben_templates')
         .select('id, titel, beschreibung')
-        .match({ firma_id: state.firm,
-abteilung_id: state.abt,
-linie_id: state.linie || null,
- typ:'permanent', aktiv:true })
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, typ:'permanent', aktiv:true })
         .order('id');
       if(error){ colPermanent.innerHTML = `<div class="empty">${error.message}</div>`; return; }
 
@@ -499,10 +488,7 @@ if (doneSet.has(`${tpl.id}|${state.today}`)) {
       const { data, error } = await supabase
         .from('tagesaufgaben_templates')
         .select('id, titel, beschreibung, datum')
-        .match({ firma_id: state.firm,
-abteilung_id: state.abt,
-linie_id: state.linie || null,
- typ:'einmalig', aktiv:true, datum: state.today })
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie, typ:'einmalig', aktiv:true, datum: state.today })
         .order('id');
       if(error){ colOnce.innerHTML = `<div class="empty">${error.message}</div>`; return; }
       if(!data?.length){ colOnce.innerHTML = `<div class="empty">Keine besonderen Aufgaben heute.</div>`; return; }
@@ -585,10 +571,7 @@ linie_id: state.linie || null,
       const { data, error } = await supabase
         .from('tagesaufgaben_history_view') // siehe SQL unten (VIEW)
         .select('*')
-        .eq('firma_id', state.firm)
-.eq('abteilung_id', state.abt)
-.eq('linie_id', state.linie ?? null)
-
+        .match({ firma_id: state.firm, abteilung_id: state.abt, linie_id: state.linie })
         .gte('datum', since)
         .order('completed_at', { ascending:false })
         .limit(100);
